@@ -71,10 +71,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             self?.updateStatusBarIcon()
         }
         
-        // Trigger the dark mode toggle at the optimal moment during the iris animation
+        // Trigger the dark mode toggle at the optimal moment during the optimized iris animation
         // For closing iris (to dark): toggle when iris is halfway closed
-        // For opening iris (to light): toggle immediately as iris starts opening
-        let toggleDelay = switchingToDarkMode ? 0.2 : 0.05
+        // For opening iris (to light): toggle early as iris starts opening  
+        let toggleDelay = switchingToDarkMode ? 0.25 : 0.1
         
         DispatchQueue.main.asyncAfter(deadline: .now() + toggleDelay) {
             self.performDarkModeToggle(wasInDarkMode: wasInDarkMode)

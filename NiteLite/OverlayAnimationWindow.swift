@@ -16,16 +16,16 @@ class OverlayAnimationWindow: NSWindow {
         self.isReleasedWhenClosed = false
     }
     
-    func showAnimation(isDarkMode: Bool, completion: @escaping () -> Void) {
-        // Set window to cover all screens
-        if let screen = NSScreen.main {
-            self.setFrame(screen.frame, display: true)
-        }
+    func showAnimation(isDarkMode: Bool, screen: NSScreen, completion: @escaping () -> Void) {
+        // Set window to cover the specific screen
+        self.setFrame(screen.frame, display: true)
         
-        // Create and set the animation view
-        let animationView = OverlayAnimationView(isDarkMode: isDarkMode) {
-            completion()
-        }
+        // Create and set the animation view with screen size
+        let animationView = OverlayAnimationView(
+            isDarkMode: isDarkMode,
+            onComplete: completion,
+            screenSize: screen.frame.size
+        )
         
         let hostingView = NSHostingView(rootView: animationView)
         hostingView.frame = self.contentView?.bounds ?? .zero
@@ -42,67 +42,64 @@ class OverlayAnimationWindow: NSWindow {
 struct OverlayAnimationView: View {
     let isDarkMode: Bool
     let onComplete: () -> Void
+    let screenSize: CGSize
     
-    @State private var irisScale: CGFloat = 0.0
+    @State private var irisRadius: CGFloat = 0.0
     
-    // Classic film iris timing
-    private let irisAnimationDuration: Double = 0.4
+    // Optimized timing for smooth animation
+    private let irisAnimationDuration: Double = 0.5
     private let holdDuration: Double = 0.1
     
     var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                // Black background
-                Color.black
-                    .ignoresSafeArea()
-                
-                // The iris cutout - this creates the "hole" in the black overlay
-                Circle()
-                    .frame(width: maxDimension(for: geometry.size), 
-                           height: maxDimension(for: geometry.size))
-                    .scaleEffect(irisScale)
-                    .position(x: geometry.size.width / 2, 
-                             y: geometry.size.height / 2)
-                    .blendMode(.destinationOut)
-            }
-            .compositingGroup() // This is crucial for blend mode to work
-            .onAppear {
-                startIrisAnimation()
-            }
+        ZStack {
+            // Black background
+            Color.black
+                .ignoresSafeArea()
+            
+            // Iris cutout - simplified approach
+            Circle()
+                .fill(Color.white)
+                .frame(width: irisRadius * 2, height: irisRadius * 2)
+                .position(x: screenSize.width / 2, y: screenSize.height / 2)
+                .blendMode(.destinationOut)
+        }
+        .compositingGroup()
+        .onAppear {
+            startIrisAnimation()
         }
     }
     
-    private func maxDimension(for size: CGSize) -> CGFloat {
-        // Calculate the diagonal to ensure the iris covers the entire screen
-        return sqrt(size.width * size.width + size.height * size.height)
-    }
-    
     private func startIrisAnimation() {
+        let maxRadius = sqrt(screenSize.width * screenSize.width + screenSize.height * screenSize.height) / 2
+        
         if isDarkMode {
             // Switching TO dark mode: iris closes (hole shrinks, revealing more black)
-            irisScale = 1.2 // Start with hole larger than screen (fully open)
+            print("Starting iris CLOSE animation - radius from \(maxRadius) to 0")
+            irisRadius = maxRadius
             
             withAnimation(.easeInOut(duration: irisAnimationDuration)) {
-                irisScale = 0.0 // Close to no hole (all black)
+                irisRadius = 0.0 // Close completely to no hole (all black)
             }
         } else {
             // Switching TO light mode: iris opens (hole expands, revealing content behind)
-            irisScale = 0.0 // Start with no hole (all black)
+            print("Starting iris OPEN animation - radius from 0 to \(maxRadius)")
+            irisRadius = 0.0 // Start with no hole (all black)
             
             withAnimation(.easeInOut(duration: irisAnimationDuration)) {
-                irisScale = 1.2 // Open hole larger than screen (reveal everything)
+                irisRadius = maxRadius // Open hole to reveal everything
             }
         }
         
         // Complete after animation + hold
         DispatchQueue.main.asyncAfter(deadline: .now() + irisAnimationDuration + holdDuration) {
+            print("Iris animation completed")
             onComplete()
         }
     }
 }
 
 class OverlayAnimationManager {
-    private var overlayWindow: OverlayAnimationWindow?
+    private var overlayWindows: [OverlayAnimationWindow] = []
     
     func showTransitionAnimation(isDarkMode: Bool, completion: @escaping () -> Void) {
         // Ensure we're on the main thread
@@ -112,34 +109,49 @@ class OverlayAnimationManager {
     }
     
     private func performAnimation(isDarkMode: Bool, completion: @escaping () -> Void) {
-        // Clean up any existing window first
-        cleanupOverlay()
+        // Clean up any existing windows first
+        cleanupOverlays()
         
-        // Create new overlay window for the main screen
-        guard let screen = NSScreen.main else {
+        // Get all screens for multi-display support
+        let screens = NSScreen.screens
+        guard !screens.isEmpty else {
             completion()
             return
         }
         
-        overlayWindow = OverlayAnimationWindow(
-            contentRect: screen.frame,
-            styleMask: [.borderless],
-            backing: .buffered,
-            defer: false
-        )
+        // Track completions from all screens
+        let totalScreens = screens.count
+        var completedScreens = 0
         
-        // Show animation with proper cleanup
-        overlayWindow?.showAnimation(isDarkMode: isDarkMode) { [weak self] in
-            DispatchQueue.main.async {
-                self?.cleanupOverlay()
-                completion()
+        // Create overlay windows for all screens
+        for screen in screens {
+            let overlayWindow = OverlayAnimationWindow(
+                contentRect: screen.frame,
+                styleMask: [.borderless],
+                backing: .buffered,
+                defer: false
+            )
+            
+            overlayWindows.append(overlayWindow)
+            
+            // Show animation with completion tracking
+            overlayWindow.showAnimation(isDarkMode: isDarkMode, screen: screen) { [weak self] in
+                DispatchQueue.main.async {
+                    completedScreens += 1
+                    if completedScreens == totalScreens {
+                        self?.cleanupOverlays()
+                        completion()
+                    }
+                }
             }
         }
     }
     
-    private func cleanupOverlay() {
-        overlayWindow?.orderOut(nil)
-        overlayWindow?.close()
-        overlayWindow = nil
+    private func cleanupOverlays() {
+        for window in overlayWindows {
+            window.orderOut(nil)
+            window.close()
+        }
+        overlayWindows.removeAll()
     }
 }
