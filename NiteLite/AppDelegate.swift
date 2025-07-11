@@ -4,6 +4,7 @@ import SwiftUI
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var darkModeManager = DarkModeManager()
+    private var animationManager = OverlayAnimationManager()
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Hide the app from the dock
@@ -61,11 +62,31 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let wasInDarkMode = darkModeManager.isDarkModeEnabled()
         print("Current mode: \(wasInDarkMode ? "Dark" : "Light")")
         
+        // Determine what mode we're switching TO
+        let switchingToDarkMode = !wasInDarkMode
+        
+        // Start animation
+        animationManager.showTransitionAnimation(isDarkMode: switchingToDarkMode) { [weak self] in
+            // Animation completed - just update the icon
+            self?.updateStatusBarIcon()
+        }
+        
+        // Trigger the dark mode toggle at the optimal moment during the iris animation
+        // For closing iris (to dark): toggle when iris is halfway closed
+        // For opening iris (to light): toggle immediately as iris starts opening
+        let toggleDelay = switchingToDarkMode ? 0.2 : 0.05
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + toggleDelay) {
+            self.performDarkModeToggle(wasInDarkMode: wasInDarkMode)
+        }
+    }
+    
+    private func performDarkModeToggle(wasInDarkMode: Bool) {
         // Toggle dark mode
         darkModeManager.toggleDarkMode()
         
-        // Update the icon after a delay to allow the system to change
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+        // Verify the change after a brief delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
             let isNowInDarkMode = self.darkModeManager.isDarkModeEnabled()
             print("Mode after toggle: \(isNowInDarkMode ? "Dark" : "Light")")
             
@@ -74,8 +95,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 print("Toggle may have failed - no change detected")
             }
-            
-            self.updateStatusBarIcon()
         }
     }
     

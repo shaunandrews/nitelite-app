@@ -9,6 +9,7 @@ It lives in your menu bar with a subtle icon indicating your current mode, makin
 - **Minimal**: Lives only in your menubar, no main window or dock icon
 - **Smart Icons**: Shows a moon in Dark Mode, sun in Light Mode  
 - **One-Click Toggle**: Simply click the menubar icon to switch modes
+- **Classic Film Iris Transition**: Beautiful iris opening/closing animation during mode switches
 - **Native**: Built with Swift and SwiftUI for macOS
 
 ## Tech stack
@@ -57,8 +58,14 @@ If the toggle doesn't work:
 4. **Check Console**: Look for error messages in Console.app that might indicate permission issues
 
 ## How it Works
-NiteLite uses multiple methods to reliably toggle Dark Mode:
+NiteLite uses multiple methods to reliably toggle Dark Mode with a beautiful classic film-style iris transition:
 
+**Visual Transition**: When switching modes, a full-screen iris animation plays:
+- **To Dark Mode**: Iris closes (circular hole shrinks to black)
+- **To Light Mode**: Iris opens (circular hole expands from black)
+- **Timing**: 0.4 second animation with optimized dark mode toggle coordination
+
+**Dark Mode Toggle Methods**:
 1. **AppleScript Integration**: Primary method using System Events to control appearance preferences
 2. **Command Line osascript**: Fallback using the osascript command-line tool  
 3. **Direct UserDefaults**: Last resort method modifying system preferences directly
@@ -70,9 +77,10 @@ NiteLite uses multiple methods to reliably toggle Dark Mode:
 ## Project Structure
 ```
 NiteLite/
-├── NiteLiteApp.swift      # Main app entry point
-├── AppDelegate.swift      # Menubar setup and event handling  
-├── DarkModeManager.swift  # Dark mode toggle logic
-├── Info.plist            # App metadata
-└── NiteLite.entitlements # Required permissions
+├── NiteLiteApp.swift            # Main app entry point
+├── AppDelegate.swift            # Menubar setup and event handling  
+├── DarkModeManager.swift        # Dark mode toggle logic
+├── OverlayAnimationWindow.swift # Classic film iris transition animation
+├── Info.plist                  # App metadata
+└── NiteLite.entitlements       # Required permissions
 ```
