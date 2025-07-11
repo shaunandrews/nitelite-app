@@ -65,19 +65,20 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Determine what mode we're switching TO
         let switchingToDarkMode = !wasInDarkMode
         
-        // Start animation
-        animationManager.showTransitionAnimation(isDarkMode: switchingToDarkMode) { [weak self] in
-            // Animation completed - just update the icon
-            self?.updateStatusBarIcon()
-        }
+        // Trigger the dark mode toggle IMMEDIATELY to avoid system stutter during animation
+        // We'll wait for the toggle to complete before starting the animation
+        performDarkModeToggle(wasInDarkMode: wasInDarkMode)
         
-        // Trigger the dark mode toggle at the optimal moment during the optimized iris animation
-        // For closing iris (to dark): toggle when iris is halfway closed
-        // For opening iris (to light): toggle early as iris starts opening  
-        let toggleDelay = switchingToDarkMode ? 0.25 : 0.1
+        // Wait a moment for the system to process the dark mode change
+        // This prevents the animation from stuttering due to system-wide appearance updates
+        let systemToggleDelay = 0.1 // Brief pause to let system settle
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + toggleDelay) {
-            self.performDarkModeToggle(wasInDarkMode: wasInDarkMode)
+        DispatchQueue.main.asyncAfter(deadline: .now() + systemToggleDelay) {
+            // Now start the animation with the system already in the target state
+            self.animationManager.showTransitionAnimation(isDarkMode: switchingToDarkMode) { [weak self] in
+                // Animation completed - just update the icon
+                self?.updateStatusBarIcon()
+            }
         }
     }
     

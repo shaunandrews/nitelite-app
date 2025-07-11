@@ -45,10 +45,12 @@ struct OverlayAnimationView: View {
     let screenSize: CGSize
     
     @State private var irisRadius: CGFloat = 0.0
+    @State private var animationTimer: Timer?
     
-    // Optimized timing for smooth animation
-    private let irisAnimationDuration: Double = 0.5
-    private let holdDuration: Double = 0.1
+    // Slowed down timing to see the animation better
+    private let irisAnimationDuration: Double = 2.0
+    private let holdDuration: Double = 0.2
+    private let targetFrameRate: Double = 60.0 // 60 FPS
     
     var body: some View {
         ZStack {
@@ -56,7 +58,7 @@ struct OverlayAnimationView: View {
             Color.black
                 .ignoresSafeArea()
             
-            // Iris cutout - simplified approach
+            // Iris cutout - optimized for smooth animation
             Circle()
                 .fill(Color.white)
                 .frame(width: irisRadius * 2, height: irisRadius * 2)
@@ -64,34 +66,70 @@ struct OverlayAnimationView: View {
                 .blendMode(.destinationOut)
         }
         .compositingGroup()
+        .drawingGroup() // Force GPU acceleration for smoother animation
         .onAppear {
             startIrisAnimation()
+        }
+        .onDisappear {
+            animationTimer?.invalidate()
+            animationTimer = nil
         }
     }
     
     private func startIrisAnimation() {
         let maxRadius = sqrt(screenSize.width * screenSize.width + screenSize.height * screenSize.height) / 2
         
+        // Calculate animation parameters
+        let frameInterval = 1.0 / targetFrameRate
+        let totalFrames = Int(irisAnimationDuration * targetFrameRate)
+        
+        var currentFrame = 0
+        let startTime = CACurrentMediaTime()
+        
         if isDarkMode {
             // Switching TO dark mode: iris closes (hole shrinks, revealing more black)
             print("Starting iris CLOSE animation - radius from \(maxRadius) to 0")
             irisRadius = maxRadius
             
-            withAnimation(.easeInOut(duration: irisAnimationDuration)) {
-                irisRadius = 0.0 // Close completely to no hole (all black)
+            // Custom timer-based animation for smooth frame rate
+            animationTimer = Timer.scheduledTimer(withTimeInterval: frameInterval, repeats: true) { timer in
+                currentFrame += 1
+                let progress = Double(currentFrame) / Double(totalFrames)
+                
+                if progress >= 1.0 {
+                    irisRadius = 0.0
+                    timer.invalidate()
+                    completeAnimation()
+                } else {
+                    // Linear interpolation from maxRadius to 0
+                    irisRadius = maxRadius * (1.0 - progress)
+                }
             }
         } else {
             // Switching TO light mode: iris opens (hole expands, revealing content behind)
             print("Starting iris OPEN animation - radius from 0 to \(maxRadius)")
-            irisRadius = 0.0 // Start with no hole (all black)
+            irisRadius = 0.0
             
-            withAnimation(.easeInOut(duration: irisAnimationDuration)) {
-                irisRadius = maxRadius // Open hole to reveal everything
+            // Custom timer-based animation for smooth frame rate
+            animationTimer = Timer.scheduledTimer(withTimeInterval: frameInterval, repeats: true) { timer in
+                currentFrame += 1
+                let progress = Double(currentFrame) / Double(totalFrames)
+                
+                if progress >= 1.0 {
+                    irisRadius = maxRadius
+                    timer.invalidate()
+                    completeAnimation()
+                } else {
+                    // Linear interpolation from 0 to maxRadius
+                    irisRadius = maxRadius * progress
+                }
             }
         }
-        
-        // Complete after animation + hold
-        DispatchQueue.main.asyncAfter(deadline: .now() + irisAnimationDuration + holdDuration) {
+    }
+    
+    private func completeAnimation() {
+        // Hold briefly then complete
+        DispatchQueue.main.asyncAfter(deadline: .now() + holdDuration) {
             print("Iris animation completed")
             onComplete()
         }
