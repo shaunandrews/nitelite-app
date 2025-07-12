@@ -48,13 +48,14 @@ struct OverlayAnimationView: View {
     
     @State private var irisRadius: CGFloat = 0.0
     @State private var fadeOpacity: Double = 0.0
+    @State private var overlayOpacity: Double = 1.0
     
     var body: some View {
         Group {
             if isDarkMode {
-                // Dark mode: Traditional iris close with black background
+                // Dark mode: Traditional iris close with black background that can fade away
                 ZStack {
-                    // Black background
+                    // Single black background with iris cutout
                     Color.black
                         .ignoresSafeArea()
                     
@@ -64,13 +65,9 @@ struct OverlayAnimationView: View {
                         .frame(width: irisRadius * 2, height: irisRadius * 2)
                         .position(x: screenSize.width / 2, y: screenSize.height / 2)
                         .blendMode(.destinationOut)
-                    
-                    // Final fade to black
-                    Color.black
-                        .ignoresSafeArea()
-                        .opacity(fadeOpacity)
                 }
                 .compositingGroup()
+                .opacity(overlayOpacity)
             } else {
                 // Light mode: Fade to black, then iris opens to reveal
                 ZStack {
@@ -111,6 +108,7 @@ struct OverlayAnimationView: View {
     private func startDarkModeAnimation() {
         let maxRadius = sqrt(screenSize.width * screenSize.width + screenSize.height * screenSize.height) / 2
         irisRadius = maxRadius
+        overlayOpacity = 1.0
         
         // Iris closes over 1.2 seconds
         withAnimation(.easeInOut(duration: 1.2)) {
@@ -121,11 +119,11 @@ struct OverlayAnimationView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
             self.onBlackReached()
             
-            // Hold black briefly
+            // Hold black briefly, then fade out the entire overlay
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                // Fade from black
+                // Fade the entire overlay away to reveal dark mode desktop
                 withAnimation(.easeOut(duration: 0.4)) {
-                    self.fadeOpacity = 0.0
+                    self.overlayOpacity = 0.0
                 }
                 
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
