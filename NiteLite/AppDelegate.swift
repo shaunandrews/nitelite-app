@@ -65,10 +65,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Determine what mode we're switching TO
         let switchingToDarkMode = !wasInDarkMode
         
-        // Start the animation immediately, then toggle dark mode when animation completes
-        animationManager.showTransitionAnimation(isDarkMode: switchingToDarkMode) { [weak self] in
-            // Animation completed - now toggle dark mode and update icon
+        // Start the animation immediately, toggle dark mode when black is reached, then fade out
+        animationManager.showTransitionAnimation(isDarkMode: switchingToDarkMode, onBlackReached: { [weak self] in
+            // Screen is now fully black - toggle dark mode
             self?.performDarkModeToggle(wasInDarkMode: wasInDarkMode)
+        }) { [weak self] in
+            // Animation and fade completed - update icon
             self?.updateStatusBarIcon()
         }
     }

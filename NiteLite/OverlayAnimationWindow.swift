@@ -16,13 +16,14 @@ class OverlayAnimationWindow: NSWindow {
         self.isReleasedWhenClosed = false
     }
     
-    func showAnimation(isDarkMode: Bool, screen: NSScreen, completion: @escaping () -> Void) {
+    func showAnimation(isDarkMode: Bool, screen: NSScreen, onBlackReached: @escaping () -> Void, completion: @escaping () -> Void) {
         // Set window to cover the specific screen
         self.setFrame(screen.frame, display: true)
         
         // Create and set the animation view with screen size
         let animationView = OverlayAnimationView(
             isDarkMode: isDarkMode,
+            onBlackReached: onBlackReached,
             onComplete: completion,
             screenSize: screen.frame.size
         )
@@ -41,112 +42,142 @@ class OverlayAnimationWindow: NSWindow {
 
 struct OverlayAnimationView: View {
     let isDarkMode: Bool
+    let onBlackReached: () -> Void
     let onComplete: () -> Void
     let screenSize: CGSize
     
     @State private var irisRadius: CGFloat = 0.0
-    @State private var animationTimer: Timer?
-    
-    // Slowed down timing to see the animation better
-    private let irisAnimationDuration: Double = 2.0
-    private let holdDuration: Double = 0.2
-    private let targetFrameRate: Double = 60.0 // 60 FPS
+    @State private var fadeOpacity: Double = 0.0
     
     var body: some View {
-        ZStack {
-            // Black background
-            Color.black
-                .ignoresSafeArea()
-            
-            // Iris cutout - optimized for smooth animation
-            Circle()
-                .fill(Color.white)
-                .frame(width: irisRadius * 2, height: irisRadius * 2)
-                .position(x: screenSize.width / 2, y: screenSize.height / 2)
-                .blendMode(.destinationOut)
+        Group {
+            if isDarkMode {
+                // Dark mode: Traditional iris close with black background
+                ZStack {
+                    // Black background
+                    Color.black
+                        .ignoresSafeArea()
+                    
+                    // White circle that shrinks (creates iris effect)
+                    Circle()
+                        .fill(Color.white)
+                        .frame(width: irisRadius * 2, height: irisRadius * 2)
+                        .position(x: screenSize.width / 2, y: screenSize.height / 2)
+                        .blendMode(.destinationOut)
+                    
+                    // Final fade to black
+                    Color.black
+                        .ignoresSafeArea()
+                        .opacity(fadeOpacity)
+                }
+                .compositingGroup()
+            } else {
+                // Light mode: Fade to black, then iris opens to reveal
+                ZStack {
+                    // Black overlay that fades in, then has hole punched through it
+                    Color.black
+                        .ignoresSafeArea()
+                        .opacity(fadeOpacity)
+                        .mask(
+                            // Create inverse of circle - everything BUT the circle
+                            ZStack {
+                                Rectangle()
+                                    .fill(Color.white)
+                                
+                                Circle()
+                                    .fill(Color.black)
+                                    .frame(width: irisRadius * 2, height: irisRadius * 2)
+                                    .position(x: screenSize.width / 2, y: screenSize.height / 2)
+                                    .blendMode(.destinationOut)
+                            }
+                            .compositingGroup()
+                        )
+                }
+            }
         }
-        .compositingGroup()
-        .drawingGroup() // Force GPU acceleration for smoother animation
         .onAppear {
-            startIrisAnimation()
-        }
-        .onDisappear {
-            animationTimer?.invalidate()
-            animationTimer = nil
+            startAnimation()
         }
     }
     
-    private func startIrisAnimation() {
+    func startAnimation() {
+        if isDarkMode {
+            startDarkModeAnimation()
+        } else {
+            startLightModeAnimation()
+        }
+    }
+    
+    private func startDarkModeAnimation() {
+        let maxRadius = sqrt(screenSize.width * screenSize.width + screenSize.height * screenSize.height) / 2
+        irisRadius = maxRadius
+        
+        // Iris closes over 1.2 seconds
+        withAnimation(.easeInOut(duration: 1.2)) {
+            irisRadius = 0
+        }
+        
+        // After iris closes, hold black and toggle
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            self.onBlackReached()
+            
+            // Hold black briefly
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                // Fade from black
+                withAnimation(.easeOut(duration: 0.4)) {
+                    self.fadeOpacity = 0.0
+                }
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                    self.onComplete()
+                }
+            }
+        }
+    }
+    
+    private func startLightModeAnimation() {
         let maxRadius = sqrt(screenSize.width * screenSize.width + screenSize.height * screenSize.height) / 2
         
-        // Calculate animation parameters
-        let frameInterval = 1.0 / targetFrameRate
-        let totalFrames = Int(irisAnimationDuration * targetFrameRate)
+        // Start with no black overlay and iris closed
+        fadeOpacity = 0.0
+        irisRadius = 0.0
         
-        var currentFrame = 0
-        _ = CACurrentMediaTime() // Track start time for debugging if needed
-        
-        if isDarkMode {
-            // Switching TO dark mode: iris closes (hole shrinks, revealing more black)
-            print("Starting iris CLOSE animation - radius from \(maxRadius) to 0")
-            irisRadius = maxRadius
-            
-            // Custom timer-based animation for smooth frame rate
-            animationTimer = Timer.scheduledTimer(withTimeInterval: frameInterval, repeats: true) { timer in
-                currentFrame += 1
-                let progress = Double(currentFrame) / Double(totalFrames)
-                
-                if progress >= 1.0 {
-                    irisRadius = 0.0
-                    timer.invalidate()
-                    completeAnimation()
-                } else {
-                    // Linear interpolation from maxRadius to 0
-                    irisRadius = maxRadius * (1.0 - progress)
-                }
-            }
-        } else {
-            // Switching TO light mode: iris opens (hole expands, revealing content behind)
-            print("Starting iris OPEN animation - radius from 0 to \(maxRadius)")
-            irisRadius = 0.0
-            
-            // Custom timer-based animation for smooth frame rate
-            animationTimer = Timer.scheduledTimer(withTimeInterval: frameInterval, repeats: true) { timer in
-                currentFrame += 1
-                let progress = Double(currentFrame) / Double(totalFrames)
-                
-                if progress >= 1.0 {
-                    irisRadius = maxRadius
-                    timer.invalidate()
-                    completeAnimation()
-                } else {
-                    // Linear interpolation from 0 to maxRadius
-                    irisRadius = maxRadius * progress
-                }
-            }
+        // 1. Fade to black over 400ms
+        withAnimation(.easeOut(duration: 0.4)) {
+            fadeOpacity = 1.0
         }
-    }
-    
-    private func completeAnimation() {
-        // Hold briefly then complete
-        DispatchQueue.main.asyncAfter(deadline: .now() + holdDuration) {
-            print("Iris animation completed")
-            onComplete()
+        
+        // 2. After fade, toggle dark mode
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+            self.onBlackReached()
+            
+            // 3. Brief hold, then iris opens
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                withAnimation(.easeOut(duration: 1.2)) {
+                    self.irisRadius = maxRadius
+                }
+                
+                // 4. Complete when iris fully opens
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                    self.onComplete()
+                }
+            }
         }
     }
 }
 
+
 class OverlayAnimationManager {
     private var overlayWindows: [OverlayAnimationWindow] = []
     
-    func showTransitionAnimation(isDarkMode: Bool, completion: @escaping () -> Void) {
+    func showTransitionAnimation(isDarkMode: Bool, onBlackReached: @escaping () -> Void, completion: @escaping () -> Void) {
         // Ensure we're on the main thread
         DispatchQueue.main.async { [weak self] in
-            self?.performAnimation(isDarkMode: isDarkMode, completion: completion)
+            self?.performAnimation(isDarkMode: isDarkMode, onBlackReached: onBlackReached, completion: completion)
         }
     }
     
-    private func performAnimation(isDarkMode: Bool, completion: @escaping () -> Void) {
+    private func performAnimation(isDarkMode: Bool, onBlackReached: @escaping () -> Void, completion: @escaping () -> Void) {
         // Clean up any existing windows first
         cleanupOverlays()
         
@@ -160,6 +191,7 @@ class OverlayAnimationManager {
         // Track completions from all screens
         let totalScreens = screens.count
         var completedScreens = 0
+        var blackReachedCallbackFired = false
         
         // Create overlay windows for all screens
         for screen in screens {
@@ -173,7 +205,13 @@ class OverlayAnimationManager {
             overlayWindows.append(overlayWindow)
             
             // Show animation with completion tracking
-            overlayWindow.showAnimation(isDarkMode: isDarkMode, screen: screen) { [weak self] in
+            overlayWindow.showAnimation(isDarkMode: isDarkMode, screen: screen, onBlackReached: {
+                // Only fire the callback once for all screens
+                if !blackReachedCallbackFired {
+                    blackReachedCallbackFired = true
+                    onBlackReached()
+                }
+            }, completion: { [weak self] in
                 DispatchQueue.main.async {
                     completedScreens += 1
                     if completedScreens == totalScreens {
@@ -181,7 +219,7 @@ class OverlayAnimationManager {
                         completion()
                     }
                 }
-            }
+            })
         }
     }
     
