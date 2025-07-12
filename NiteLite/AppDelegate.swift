@@ -1,10 +1,12 @@
 import Cocoa
 import SwiftUI
+import Carbon
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem?
     private var darkModeManager = DarkModeManager()
     private var animationManager = OverlayAnimationManager()
+    private var hotKeyRef: EventHotKeyRef?
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Hide the app from the dock
@@ -15,6 +17,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Create the status bar item
         createStatusBarItem()
+        
+        // Register global keyboard shortcut
+        setupGlobalKeyboardShortcut()
         
         // Update the icon based on current dark mode state
         updateStatusBarIcon()
@@ -125,7 +130,38 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
     
+    private func setupGlobalKeyboardShortcut() {
+        let hotKeyID = EventHotKeyID(signature: 1, id: 1)
+        let keyCode = UInt32(kVK_ANSI_D)
+        let modifiers = UInt32(cmdKey + shiftKey)
+        
+        var eventHotKey: EventHotKeyRef?
+        let status = RegisterEventHotKey(keyCode, modifiers, hotKeyID, GetApplicationEventTarget(), 0, &eventHotKey)
+        
+        if status == noErr {
+            self.hotKeyRef = eventHotKey
+            print("Global keyboard shortcut registered: ⌘⇧D")
+        } else {
+            print("Failed to register global keyboard shortcut")
+        }
+        
+        var eventSpec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: OSType(kEventHotKeyPressed))
+        InstallEventHandler(GetApplicationEventTarget(), { (nextHandler, theEvent, userData) -> OSStatus in
+            let appDelegate = Unmanaged<AppDelegate>.fromOpaque(userData!).takeUnretainedValue()
+            appDelegate.handleHotKeyPressed()
+            return noErr
+        }, 1, &eventSpec, Unmanaged.passUnretained(self).toOpaque(), nil)
+    }
+    
+    private func handleHotKeyPressed() {
+        print("Keyboard shortcut triggered: ⌘⇧D")
+        statusBarButtonClicked()
+    }
+    
     deinit {
+        if let hotKeyRef = hotKeyRef {
+            UnregisterEventHotKey(hotKeyRef)
+        }
         DistributedNotificationCenter.default.removeObserver(self)
     }
 }
