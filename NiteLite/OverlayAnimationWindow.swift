@@ -110,23 +110,23 @@ struct OverlayAnimationView: View {
         irisRadius = maxRadius
         overlayOpacity = 1.0
         
-        // Iris closes over 1.2 seconds
-        withAnimation(.easeInOut(duration: 1.2)) {
+        // Iris closes over 0.6 seconds
+        withAnimation(.easeInOut(duration: 0.6)) {
             irisRadius = 0
         }
         
         // After iris closes, hold black and toggle
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
             self.onBlackReached()
             
             // Hold black briefly, then fade out the entire overlay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                 // Fade the entire overlay away to reveal dark mode desktop
-                withAnimation(.easeOut(duration: 0.4)) {
+                withAnimation(.easeOut(duration: 0.2)) {
                     self.overlayOpacity = 0.0
                 }
                 
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                     self.onComplete()
                 }
             }
@@ -140,23 +140,23 @@ struct OverlayAnimationView: View {
         fadeOpacity = 0.0
         irisRadius = 0.0
         
-        // 1. Fade to black over 400ms
-        withAnimation(.easeOut(duration: 0.4)) {
+        // 1. Fade to black over 0.2 seconds
+        withAnimation(.easeOut(duration: 0.2)) {
             fadeOpacity = 1.0
         }
         
         // 2. After fade, toggle dark mode
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             self.onBlackReached()
             
             // 3. Brief hold, then iris opens
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                withAnimation(.easeOut(duration: 1.2)) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                withAnimation(.easeOut(duration: 0.6)) {
                     self.irisRadius = maxRadius
                 }
                 
                 // 4. Complete when iris fully opens
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                     self.onComplete()
                 }
             }
