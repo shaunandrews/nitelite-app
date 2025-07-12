@@ -99,6 +99,33 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         let menu = NSMenu()
         menu.autoenablesItems = false
         
+        // Add animation type submenu
+        let animationItem = NSMenuItem(title: "Animation Style", action: nil, keyEquivalent: "")
+        let animationSubmenu = NSMenu()
+        
+        for animationType in AnimationType.allCases {
+            let menuItem = NSMenuItem(
+                title: animationType.displayName,
+                action: #selector(changeAnimationType(_:)),
+                keyEquivalent: ""
+            )
+            menuItem.target = self
+            menuItem.representedObject = animationType
+            
+            // Check current selection
+            if AnimationPreferences.shared.animationType == animationType {
+                menuItem.state = .on
+            }
+            
+            animationSubmenu.addItem(menuItem)
+        }
+        
+        animationItem.submenu = animationSubmenu
+        menu.addItem(animationItem)
+        
+        // Add separator
+        menu.addItem(NSMenuItem.separator())
+        
         // Add the quit item
         let quitItem = NSMenuItem(title: "Quit NiteLite", action: #selector(quitApplication), keyEquivalent: "q")
         quitItem.target = self
@@ -114,6 +141,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         DispatchQueue.main.async {
             self.statusItem?.menu = nil
         }
+    }
+    
+    @objc private func changeAnimationType(_ sender: NSMenuItem) {
+        guard let animationType = sender.representedObject as? AnimationType else { return }
+        AnimationPreferences.shared.animationType = animationType
+        print("Animation type changed to: \(animationType.displayName)")
     }
     
     @objc private func quitApplication() {

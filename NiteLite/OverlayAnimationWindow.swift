@@ -1,6 +1,36 @@
 import Cocoa
 import SwiftUI
 
+enum AnimationType: String, CaseIterable {
+    case iris = "iris"
+    case wipe = "wipe"
+    
+    var displayName: String {
+        switch self {
+        case .iris:
+            return "Classic Film Iris"
+        case .wipe:
+            return "Left-Right Wipe"
+        }
+    }
+}
+
+class AnimationPreferences {
+    static let shared = AnimationPreferences()
+    private let userDefaults = UserDefaults.standard
+    private let animationTypeKey = "NiteLite_AnimationType"
+    
+    var animationType: AnimationType {
+        get {
+            let storedValue = userDefaults.string(forKey: animationTypeKey) ?? AnimationType.iris.rawValue
+            return AnimationType(rawValue: storedValue) ?? .iris
+        }
+        set {
+            userDefaults.set(newValue.rawValue, forKey: animationTypeKey)
+        }
+    }
+}
+
 class OverlayAnimationWindow: NSWindow {
     private var animationView: NSHostingView<OverlayAnimationView>?
     
@@ -16,13 +46,14 @@ class OverlayAnimationWindow: NSWindow {
         self.isReleasedWhenClosed = false
     }
     
-    func showAnimation(isDarkMode: Bool, screen: NSScreen, onBlackReached: @escaping () -> Void, completion: @escaping () -> Void) {
+    func showAnimation(isDarkMode: Bool, screen: NSScreen, animationType: AnimationType, onBlackReached: @escaping () -> Void, completion: @escaping () -> Void) {
         // Set window to cover the specific screen
         self.setFrame(screen.frame, display: true)
         
         // Create and set the animation view with screen size
         let animationView = OverlayAnimationView(
             isDarkMode: isDarkMode,
+            animationType: animationType,
             onBlackReached: onBlackReached,
             onComplete: completion,
             screenSize: screen.frame.size
@@ -42,6 +73,7 @@ class OverlayAnimationWindow: NSWindow {
 
 struct OverlayAnimationView: View {
     let isDarkMode: Bool
+    let animationType: AnimationType
     let onBlackReached: () -> Void
     let onComplete: () -> Void
     let screenSize: CGSize
@@ -49,8 +81,24 @@ struct OverlayAnimationView: View {
     @State private var irisRadius: CGFloat = 0.0
     @State private var fadeOpacity: Double = 0.0
     @State private var overlayOpacity: Double = 1.0
+    @State private var wipeProgress: CGFloat = 0.0
     
     var body: some View {
+        Group {
+            switch animationType {
+            case .iris:
+                irisAnimationView
+            case .wipe:
+                wipeAnimationView
+            }
+        }
+        .onAppear {
+            startAnimation()
+        }
+    }
+    
+    @ViewBuilder
+    private var irisAnimationView: some View {
         Group {
             if isDarkMode {
                 // Dark mode: Traditional iris close with black background that can fade away
@@ -94,20 +142,52 @@ struct OverlayAnimationView: View {
                 }
             }
         }
-        .onAppear {
-            startAnimation()
-        }
+    }
+    
+    @ViewBuilder
+    private var wipeAnimationView: some View {
+        // Black overlay with gradient wipe effect
+        Color.black
+            .ignoresSafeArea()
+            .opacity(overlayOpacity)
+            .mask(
+                Rectangle()
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(stops: [
+                                .init(color: .clear, location: 0.0),
+                                .init(color: .white, location: 0.1),
+                                .init(color: .white, location: 0.9),
+                                .init(color: .clear, location: 1.0)
+                            ]),
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .frame(width: screenSize.width * 1.5, height: screenSize.height)
+                    .offset(x: -screenSize.width * 1.5 + (screenSize.width * 2.5 * wipeProgress), y: 0)
+            )
     }
     
     func startAnimation() {
-        if isDarkMode {
-            startDarkModeAnimation()
-        } else {
-            startLightModeAnimation()
+        switch animationType {
+        case .iris:
+            if isDarkMode {
+                startIrisDarkModeAnimation()
+            } else {
+                startIrisLightModeAnimation()
+            }
+        case .wipe:
+            if isDarkMode {
+                startWipeDarkModeAnimation()
+            } else {
+                startWipeLightModeAnimation()
+            }
         }
     }
     
-    private func startDarkModeAnimation() {
+    // MARK: - Iris Animation Methods
+    private func startIrisDarkModeAnimation() {
         let maxRadius = sqrt(screenSize.width * screenSize.width + screenSize.height * screenSize.height) / 2
         irisRadius = maxRadius
         overlayOpacity = 1.0
@@ -134,7 +214,7 @@ struct OverlayAnimationView: View {
         }
     }
     
-    private func startLightModeAnimation() {
+    private func startIrisLightModeAnimation() {
         let maxRadius = sqrt(screenSize.width * screenSize.width + screenSize.height * screenSize.height) / 2
         
         // Start with everything closed
@@ -160,6 +240,36 @@ struct OverlayAnimationView: View {
                     self.onComplete()
                 }
             }
+        }
+    }
+    
+    // MARK: - Wipe Animation Methods
+    private func startWipeDarkModeAnimation() {
+        startWipeAnimation()
+    }
+    
+    private func startWipeLightModeAnimation() {
+        startWipeAnimation()
+    }
+    
+    private func startWipeAnimation() {
+        // Start with wipe completely off-screen to the left
+        wipeProgress = 0.0
+        overlayOpacity = 1.0
+        
+        // Animate wipe across screen and completely off the right side
+        withAnimation(.easeInOut(duration: 1.2)) {
+            wipeProgress = 2.0  // Go all the way across and off-screen
+        }
+        
+        // Trigger mode change when wipe covers the screen (at 50% progress)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            self.onBlackReached()
+        }
+        
+        // Complete after wipe animation is totally finished
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
+            self.onComplete()
         }
     }
     
@@ -197,11 +307,12 @@ class OverlayAnimationManager {
     func showTransitionAnimation(isDarkMode: Bool, onBlackReached: @escaping () -> Void, completion: @escaping () -> Void) {
         // Ensure we're on the main thread
         DispatchQueue.main.async { [weak self] in
-            self?.performAnimation(isDarkMode: isDarkMode, onBlackReached: onBlackReached, completion: completion)
+            let animationType = AnimationPreferences.shared.animationType
+            self?.performAnimation(isDarkMode: isDarkMode, animationType: animationType, onBlackReached: onBlackReached, completion: completion)
         }
     }
     
-    private func performAnimation(isDarkMode: Bool, onBlackReached: @escaping () -> Void, completion: @escaping () -> Void) {
+    private func performAnimation(isDarkMode: Bool, animationType: AnimationType, onBlackReached: @escaping () -> Void, completion: @escaping () -> Void) {
         // Clean up any existing windows first
         cleanupOverlays()
         
@@ -229,7 +340,7 @@ class OverlayAnimationManager {
             overlayWindows.append(overlayWindow)
             
             // Show animation with completion tracking
-            overlayWindow.showAnimation(isDarkMode: isDarkMode, screen: screen, onBlackReached: {
+            overlayWindow.showAnimation(isDarkMode: isDarkMode, screen: screen, animationType: animationType, onBlackReached: {
                 // Only fire the callback once for all screens
                 if !blackReachedCallbackFired {
                     blackReachedCallbackFired = true

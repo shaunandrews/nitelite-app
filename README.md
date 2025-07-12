@@ -9,7 +9,9 @@ It lives in your menu bar with a subtle icon indicating your current mode, makin
 - **Minimal**: Lives only in your menubar, no main window or dock icon
 - **Smart Icons**: Shows a moon in Dark Mode, sun in Light Mode  
 - **One-Click Toggle**: Simply click the menubar icon to switch modes
+- **Multiple Transition Styles**: Choose between Classic Film Iris or Left-Right Wipe animations
 - **Classic Film Iris Transition**: Beautiful iris opening/closing animation during mode switches
+- **Left-Right Wipe Transition**: Smooth left-to-right fade-wipe through black for a cinematic effect
 - **Native**: Built with Swift and SwiftUI for macOS
 
 ## Tech stack
@@ -58,12 +60,17 @@ If the toggle doesn't work:
 4. **Check Console**: Look for error messages in Console.app that might indicate permission issues
 
 ## How it Works
-NiteLite uses multiple methods to reliably toggle Dark Mode with a beautiful classic film-style iris transition:
+NiteLite uses multiple methods to reliably toggle Dark Mode with beautiful classic film-style transitions:
 
-**Visual Transition**: When switching modes, a full-screen iris animation plays:
-- **To Dark Mode**: Iris closes (circular hole shrinks to black)
-- **To Light Mode**: Iris opens (circular hole expands from black)
-- **Timing**: 0.4 second animation with optimized dark mode toggle coordination
+**Visual Transitions**: When switching modes, choose from two cinematic animation styles:
+- **Classic Film Iris**: Traditional iris opening/closing animation
+  - **To Dark Mode**: Iris closes (circular hole shrinks to black)
+  - **To Light Mode**: Iris opens (circular hole expands from black)
+- **Left-Right Wipe**: Smooth fade-wipe transition through black
+  - **To Dark Mode**: Screen wipes from left to right to black
+  - **To Light Mode**: Fade to black, then wipe from left to right revealing content
+- **Timing**: 0.3-0.4 second animations with optimized dark mode toggle coordination
+- **Context Menu**: Right-click the menubar icon to choose your preferred animation style
 
 **Dark Mode Toggle Methods**:
 1. **AppleScript Integration**: Primary method using System Events to control appearance preferences
@@ -73,6 +80,8 @@ NiteLite uses multiple methods to reliably toggle Dark Mode with a beautiful cla
 **Permission Handling**: The app requests automation permissions automatically on first launch, eliminating the need to wait for user interaction. All methods include verification to ensure the toggle actually worked.
 
 **Smart Icon Updates**: The menubar icon automatically reflects the current system appearance and updates when Dark Mode is toggled from other sources (System Preferences, Control Center, etc.)
+
+**Animation Preferences**: Your preferred animation style is saved automatically and persists between app launches.
 
 ## Demo & Marketing
 
