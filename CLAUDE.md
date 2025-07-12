@@ -20,6 +20,15 @@ xcodebuild -project NiteLite.xcodeproj -scheme NiteLite -configuration Debug bui
 open build/Debug/NiteLite.app
 ```
 
+### Marketing & Demo
+```bash
+# Open interactive demo page in browser
+open marketing/index.html
+
+# View marketing folder contents
+ls marketing/
+```
+
 ### Development in Xcode
 ```bash
 # Open project in Xcode
@@ -29,6 +38,20 @@ open NiteLite.xcodeproj
 ```
 
 ## Architecture
+
+### Project Structure
+```
+NiteLite/
+├── NiteLiteApp.swift            # Main app entry point
+├── AppDelegate.swift            # Menubar setup and event handling  
+├── DarkModeManager.swift        # Dark mode toggle logic
+├── OverlayAnimationWindow.swift # Classic film iris transition animation
+├── Info.plist                  # App metadata
+├── NiteLite.entitlements       # Required permissions
+└── marketing/                  # Demo and marketing materials
+    ├── index.html              # Interactive demo page with light/dark mode
+    └── [demo assets]           # Recorded videos (mov/gif) for marketing
+```
 
 ### Core Components
 
@@ -67,6 +90,29 @@ The iris animation and dark mode toggle are carefully coordinated:
 - Uses `DistributedNotificationCenter` for system-wide appearance change notifications
 - Animation uses SwiftUI's `blendMode(.destinationOut)` with `compositingGroup()` for iris effect
 - Multiple screen support via `NSScreen.main` frame detection
+
+## Marketing & Demo Materials
+
+The `/marketing` folder contains materials for promoting NiteLite:
+
+### Interactive Demo
+- **index.html**: A responsive web page that demonstrates the light/dark mode concept
+- Automatically adapts to system appearance using `prefers-color-scheme` media queries
+- Features smooth transitions and the "Let there be NiteLite!" tagline
+- Useful for screenshots, social media posts, and live demonstrations
+
+### Demo Videos
+- Recorded mov/gif files showing the actual app in action
+- Captures the classic film iris transition animation
+- Demonstrates the menubar icon changes and smooth mode switching
+- Used for marketing on platforms like Gumroad, Reddit, and X (Twitter)
+
+### Usage in Marketing
+These materials are designed for:
+- Product listings and store pages
+- Social media demonstrations
+- Documentation and tutorials
+- Press kits and review materials
 
 ## Troubleshooting
 

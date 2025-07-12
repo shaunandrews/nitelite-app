@@ -74,6 +74,14 @@ NiteLite uses multiple methods to reliably toggle Dark Mode with a beautiful cla
 
 **Smart Icon Updates**: The menubar icon automatically reflects the current system appearance and updates when Dark Mode is toggled from other sources (System Preferences, Control Center, etc.)
 
+## Demo & Marketing
+
+Check out the `/marketing` folder for:
+- **Live Demo**: Interactive HTML page showcasing the app's light/dark mode toggling
+- **Marketing Assets**: Recorded demo videos (mov/gif) showing the classic film iris transition in action
+
+The marketing materials demonstrate the smooth animation and instant dark mode switching that makes NiteLite special.
+
 ## Project Structure
 ```
 NiteLite/
@@ -82,5 +90,8 @@ NiteLite/
 ├── DarkModeManager.swift        # Dark mode toggle logic
 ├── OverlayAnimationWindow.swift # Classic film iris transition animation
 ├── Info.plist                  # App metadata
-└── NiteLite.entitlements       # Required permissions
+├── NiteLite.entitlements       # Required permissions
+└── marketing/                  # Demo page and marketing assets
+    ├── index.html              # Interactive demo page
+    └── [demo videos]           # Recorded demo materials (mov/gif)
 ```
