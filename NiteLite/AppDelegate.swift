@@ -65,20 +65,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Determine what mode we're switching TO
         let switchingToDarkMode = !wasInDarkMode
         
-        // Trigger the dark mode toggle IMMEDIATELY to avoid system stutter during animation
-        // We'll wait for the toggle to complete before starting the animation
-        performDarkModeToggle(wasInDarkMode: wasInDarkMode)
-        
-        // Wait a moment for the system to process the dark mode change
-        // This prevents the animation from stuttering due to system-wide appearance updates
-        let systemToggleDelay = 0.1 // Brief pause to let system settle
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + systemToggleDelay) {
-            // Now start the animation with the system already in the target state
-            self.animationManager.showTransitionAnimation(isDarkMode: switchingToDarkMode) { [weak self] in
-                // Animation completed - just update the icon
-                self?.updateStatusBarIcon()
-            }
+        // Start the animation immediately, then toggle dark mode when animation completes
+        animationManager.showTransitionAnimation(isDarkMode: switchingToDarkMode) { [weak self] in
+            // Animation completed - now toggle dark mode and update icon
+            self?.performDarkModeToggle(wasInDarkMode: wasInDarkMode)
+            self?.updateStatusBarIcon()
         }
     }
     

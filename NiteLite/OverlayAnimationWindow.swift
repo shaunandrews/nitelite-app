@@ -84,7 +84,7 @@ struct OverlayAnimationView: View {
         let totalFrames = Int(irisAnimationDuration * targetFrameRate)
         
         var currentFrame = 0
-        let startTime = CACurrentMediaTime()
+        _ = CACurrentMediaTime() // Track start time for debugging if needed
         
         if isDarkMode {
             // Switching TO dark mode: iris closes (hole shrinks, revealing more black)

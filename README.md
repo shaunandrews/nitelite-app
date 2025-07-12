@@ -33,8 +33,8 @@ Or use the build script:
 
 ### Manual Build
 ```bash
-xcodebuild -project NiteLite.xcodeproj -scheme NiteLite -configuration Debug build
-open build/Debug/NiteLite.app
+xcodebuild -project NiteLite.xcodeproj -scheme NiteLite -configuration Debug -derivedDataPath build build
+open build/Build/Products/Debug/NiteLite.app
 ```
 
 ## Permissions

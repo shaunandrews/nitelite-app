@@ -50,9 +50,9 @@ Each method includes verification to ensure the toggle actually worked before co
 ### Animation Timing Coordination
 
 The iris animation and dark mode toggle are carefully coordinated:
-- **To Dark Mode**: Toggle occurs at 50% animation completion (iris halfway closed)
-- **To Light Mode**: Toggle occurs at 10% animation completion (iris starts opening)
-- **Animation Duration**: 1.0 second with 0.3 second hold
+- **Animation First**: Classic film iris transition plays immediately when clicked
+- **Toggle After**: Dark mode toggles immediately after animation completes
+- **Animation Duration**: 2.0 second iris animation with 0.2 second hold
 
 ### Permission Requirements
 
