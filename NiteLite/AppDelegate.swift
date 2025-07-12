@@ -124,16 +124,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Toggle dark mode
         darkModeManager.toggleDarkMode()
         
-        // Verify the change after a brief delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            let isNowInDarkMode = self.darkModeManager.isDarkModeEnabled()
-            print("Mode after toggle: \(isNowInDarkMode ? "Dark" : "Light")")
-            
-            if wasInDarkMode != isNowInDarkMode {
-                print("Toggle successful!")
-            } else {
-                print("Toggle may have failed - no change detected")
-            }
+        // Remove the verification delay - let the animation handle waiting
+        // The animation will monitor for the actual appearance change
+        let isNowInDarkMode = self.darkModeManager.isDarkModeEnabled()
+        print("Mode after toggle: \(isNowInDarkMode ? "Dark" : "Light")")
+        
+        if wasInDarkMode != isNowInDarkMode {
+            print("Toggle successful!")
+        } else {
+            print("Toggle initiated - animation will wait for system response")
         }
     }
     

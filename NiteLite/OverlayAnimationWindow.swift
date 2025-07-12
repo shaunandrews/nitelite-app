@@ -62,9 +62,10 @@ struct OverlayAnimationView: View {
                     // White circle that shrinks (creates iris effect)
                     Circle()
                         .fill(Color.white)
-                        .frame(width: irisRadius * 2, height: irisRadius * 2)
+                        .frame(width: irisRadius > 0 ? irisRadius * 2 : 0, height: irisRadius > 0 ? irisRadius * 2 : 0)
                         .position(x: screenSize.width / 2, y: screenSize.height / 2)
                         .blendMode(.destinationOut)
+                        .opacity(irisRadius > 0 ? 1.0 : 0.0)  // Hide when radius goes negative
                 }
                 .compositingGroup()
                 .opacity(overlayOpacity)
@@ -83,9 +84,10 @@ struct OverlayAnimationView: View {
                                 
                                 Circle()
                                     .fill(Color.black)
-                                    .frame(width: irisRadius * 2, height: irisRadius * 2)
+                                    .frame(width: irisRadius > 0 ? irisRadius * 2 : 0, height: irisRadius > 0 ? irisRadius * 2 : 0)
                                     .position(x: screenSize.width / 2, y: screenSize.height / 2)
                                     .blendMode(.destinationOut)
+                                    .opacity(irisRadius > 0 ? 1.0 : 0.0)  // Hide when radius is zero
                             }
                             .compositingGroup()
                         )
@@ -110,23 +112,22 @@ struct OverlayAnimationView: View {
         irisRadius = maxRadius
         overlayOpacity = 1.0
         
-        // Iris closes over 0.6 seconds
-        withAnimation(.easeInOut(duration: 0.6)) {
-            irisRadius = 0
+        // Iris closes over 0.2 seconds - COMPLETE the animation first
+        withAnimation(.easeInOut(duration: 0.2)) {
+            irisRadius = 0.0
         }
         
-        // After iris closes, hold black and toggle
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+        // Only trigger dark mode AFTER iris is completely closed
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             self.onBlackReached()
             
-            // Hold black briefly, then fade out the entire overlay
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                // Fade the entire overlay away to reveal dark mode desktop
-                withAnimation(.easeOut(duration: 0.2)) {
+            // Wait for system to switch, then fade out
+            self.waitForDarkModeChange(expectedDarkMode: true) {
+                withAnimation(.easeOut(duration: 0.1)) {
                     self.overlayOpacity = 0.0
                 }
                 
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     self.onComplete()
                 }
             }
@@ -136,32 +137,57 @@ struct OverlayAnimationView: View {
     private func startLightModeAnimation() {
         let maxRadius = sqrt(screenSize.width * screenSize.width + screenSize.height * screenSize.height) / 2
         
-        // Start with no black overlay and iris closed
+        // Start with everything closed
         fadeOpacity = 0.0
         irisRadius = 0.0
         
-        // 1. Fade to black over 0.2 seconds
-        withAnimation(.easeOut(duration: 0.2)) {
+        // Fade to black first
+        withAnimation(.easeOut(duration: 0.15)) {
             fadeOpacity = 1.0
         }
         
-        // 2. After fade, toggle dark mode
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+        // Trigger light mode change when fully black
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             self.onBlackReached()
             
-            // 3. Brief hold, then iris opens
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                withAnimation(.easeOut(duration: 0.6)) {
+            // Wait for system to switch, then open iris
+            self.waitForDarkModeChange(expectedDarkMode: false) {
+                withAnimation(.easeOut(duration: 0.2)) {
                     self.irisRadius = maxRadius
                 }
                 
-                // 4. Complete when iris fully opens
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
                     self.onComplete()
                 }
             }
         }
     }
+    
+    private func waitForDarkModeChange(expectedDarkMode: Bool, completion: @escaping () -> Void) {
+        let checkAppearance = {
+            let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            return isDark == expectedDarkMode
+        }
+        
+        // If already in expected mode, complete immediately
+        if checkAppearance() {
+            completion()
+            return
+        }
+        
+        // Poll for appearance change with timeout
+        var attempts = 0
+        let maxAttempts = 60 // 1 second timeout at 16ms intervals
+        
+        Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { timer in
+            attempts += 1
+            if checkAppearance() || attempts >= maxAttempts {
+                timer.invalidate()
+                completion()
+            }
+        }
+    }
+    
 }
 
 
