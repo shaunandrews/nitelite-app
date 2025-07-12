@@ -156,16 +156,16 @@ struct OverlayAnimationView: View {
                         LinearGradient(
                             gradient: Gradient(stops: [
                                 .init(color: .clear, location: 0.0),
-                                .init(color: .white, location: 0.1),
-                                .init(color: .white, location: 0.9),
+                                .init(color: .white, location: 0.05),
+                                .init(color: .white, location: 0.95),
                                 .init(color: .clear, location: 1.0)
                             ]),
                             startPoint: .leading,
                             endPoint: .trailing
                         )
                     )
-                    .frame(width: screenSize.width * 1.5, height: screenSize.height)
-                    .offset(x: -screenSize.width * 1.5 + (screenSize.width * 2.5 * wipeProgress), y: 0)
+                    .frame(width: screenSize.width * 2.0, height: screenSize.height)
+                    .offset(x: -screenSize.width * 1.0 + (screenSize.width * 2.0 * wipeProgress), y: 0)
             )
     }
     
@@ -245,31 +245,40 @@ struct OverlayAnimationView: View {
     
     // MARK: - Wipe Animation Methods
     private func startWipeDarkModeAnimation() {
-        startWipeAnimation()
+        startWipeAnimation(expectedDarkMode: true)
     }
     
     private func startWipeLightModeAnimation() {
-        startWipeAnimation()
+        startWipeAnimation(expectedDarkMode: false)
     }
     
-    private func startWipeAnimation() {
+    private func startWipeAnimation(expectedDarkMode: Bool) {
         // Start with wipe completely off-screen to the left
         wipeProgress = 0.0
         overlayOpacity = 1.0
         
-        // Animate wipe across screen and completely off the right side
-        withAnimation(.easeInOut(duration: 1.2)) {
-            wipeProgress = 2.0  // Go all the way across and off-screen
+        // Animate wipe across screen in two phases for better control
+        // Phase 1: Wipe to full coverage (0.0 to 0.6 progress = screen fully covered)
+        withAnimation(.easeInOut(duration: 0.4)) {
+            wipeProgress = 0.6  // This ensures screen is fully black
         }
         
-        // Trigger mode change when wipe covers the screen (at 50% progress)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+        // Trigger mode change only when screen is fully covered
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
             self.onBlackReached()
-        }
-        
-        // Complete after wipe animation is totally finished
-        DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {
-            self.onComplete()
+            
+            // Wait for the system to actually change appearance before continuing
+            self.waitForDarkModeChange(expectedDarkMode: expectedDarkMode) {
+                // Phase 2: Continue wipe animation after mode change is confirmed
+                withAnimation(.easeInOut(duration: 0.5)) {
+                    self.wipeProgress = 1.2  // Complete the wipe off-screen
+                }
+                
+                // Complete after wipe animation is totally finished
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self.onComplete()
+                }
+            }
         }
     }
     
