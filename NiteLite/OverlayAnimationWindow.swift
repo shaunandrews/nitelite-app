@@ -192,22 +192,22 @@ struct OverlayAnimationView: View {
         irisRadius = maxRadius
         overlayOpacity = 1.0
         
-        // Iris closes over 0.2 seconds - COMPLETE the animation first
-        withAnimation(.easeInOut(duration: 0.2)) {
+        // Faster iris close - 0.15 seconds
+        withAnimation(.easeInOut(duration: 0.15)) {
             irisRadius = 0.0
         }
         
-        // Only trigger dark mode AFTER iris is completely closed
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+        // Trigger dark mode after iris closes
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
             self.onBlackReached()
             
-            // Wait for system to switch, then fade out
+            // Wait for system to switch, then quick fade out
             self.waitForDarkModeChange(expectedDarkMode: true) {
-                withAnimation(.easeOut(duration: 0.1)) {
+                withAnimation(.easeOut(duration: 0.08)) {
                     self.overlayOpacity = 0.0
                 }
                 
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
                     self.onComplete()
                 }
             }
@@ -221,22 +221,22 @@ struct OverlayAnimationView: View {
         fadeOpacity = 0.0
         irisRadius = 0.0
         
-        // Fade to black first
-        withAnimation(.easeOut(duration: 0.15)) {
+        // Faster fade to black
+        withAnimation(.easeOut(duration: 0.12)) {
             fadeOpacity = 1.0
         }
         
         // Trigger light mode change when fully black
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
             self.onBlackReached()
             
-            // Wait for system to switch, then open iris
+            // Wait for system to switch, then open iris faster
             self.waitForDarkModeChange(expectedDarkMode: false) {
-                withAnimation(.easeOut(duration: 0.2)) {
+                withAnimation(.easeOut(duration: 0.15)) {
                     self.irisRadius = maxRadius
                 }
                 
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
                     self.onComplete()
                 }
             }
@@ -257,25 +257,22 @@ struct OverlayAnimationView: View {
         wipeProgress = 0.0
         overlayOpacity = 1.0
         
-        // Animate wipe across screen in two phases for better control
-        // Phase 1: Wipe to full coverage (0.0 to 0.6 progress = screen fully covered)
-        withAnimation(.easeInOut(duration: 0.4)) {
-            wipeProgress = 0.6  // This ensures screen is fully black
+        // Much faster wipe to full coverage
+        withAnimation(.easeInOut(duration: 0.2)) {
+            wipeProgress = 0.6  // Screen fully covered
         }
         
-        // Trigger mode change only when screen is fully covered
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+        // Trigger mode change when screen is fully covered
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             self.onBlackReached()
             
-            // Wait for the system to actually change appearance before continuing
+            // Wait for system appearance change, then quick completion
             self.waitForDarkModeChange(expectedDarkMode: expectedDarkMode) {
-                // Phase 2: Continue wipe animation after mode change is confirmed
-                withAnimation(.easeInOut(duration: 0.5)) {
-                    self.wipeProgress = 1.2  // Complete the wipe off-screen
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    self.wipeProgress = 1.1  // Complete the wipe
                 }
                 
-                // Complete after wipe animation is totally finished
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                     self.onComplete()
                 }
             }
@@ -294,9 +291,9 @@ struct OverlayAnimationView: View {
             return
         }
         
-        // Poll for appearance change with timeout
+        // More responsive polling with shorter timeout
         var attempts = 0
-        let maxAttempts = 60 // 1 second timeout at 16ms intervals
+        let maxAttempts = 40 // 0.64 second timeout at 16ms intervals
         
         Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { timer in
             attempts += 1
