@@ -61,6 +61,19 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     @objc private func statusBarButtonClicked() {
+        // Check which mouse button was pressed
+        guard let event = NSApp.currentEvent else { return }
+        
+        if event.type == .rightMouseUp {
+            // Right-click: show context menu
+            showContextMenu()
+        } else {
+            // Left-click: toggle dark mode
+            performDarkModeToggle()
+        }
+    }
+    
+    private func performDarkModeToggle() {
         print("Status bar button clicked")
         
         // Get current state before toggle
@@ -73,14 +86,41 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // Start the animation immediately, toggle dark mode when black is reached, then fade out
         animationManager.showTransitionAnimation(isDarkMode: switchingToDarkMode, onBlackReached: { [weak self] in
             // Screen is now fully black - toggle dark mode
-            self?.performDarkModeToggle(wasInDarkMode: wasInDarkMode)
+            self?.performDarkModeToggleInternal(wasInDarkMode: wasInDarkMode)
         }) { [weak self] in
             // Animation and fade completed - update icon
             self?.updateStatusBarIcon()
         }
     }
     
-    private func performDarkModeToggle(wasInDarkMode: Bool) {
+    private func showContextMenu() {
+        guard let button = statusItem?.button else { return }
+        
+        let menu = NSMenu()
+        menu.autoenablesItems = false
+        
+        // Add the quit item
+        let quitItem = NSMenuItem(title: "Quit NiteLite", action: #selector(quitApplication), keyEquivalent: "q")
+        quitItem.target = self
+        menu.addItem(quitItem)
+        
+        // Use the status item's menu property for proper rendering
+        statusItem?.menu = menu
+        
+        // Trigger the menu to appear
+        button.performClick(nil)
+        
+        // Clear the menu after use to restore click behavior
+        DispatchQueue.main.async {
+            self.statusItem?.menu = nil
+        }
+    }
+    
+    @objc private func quitApplication() {
+        NSApplication.shared.terminate(nil)
+    }
+    
+    private func performDarkModeToggleInternal(wasInDarkMode: Bool) {
         // Toggle dark mode
         darkModeManager.toggleDarkMode()
         
