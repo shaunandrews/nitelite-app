@@ -122,9 +122,16 @@ struct OverlayAnimationView: View {
                 irisAnimationView
             case .wipe:
                 wipeAnimationView
-            case .tv, .shutter, .blinds, .curtain, .drip:
-                // TODO: Implement these animations in later tasks
-                irisAnimationView
+            case .tv:
+                tvAnimationView
+            case .shutter:
+                shutterAnimationView
+            case .blinds:
+                blindsAnimationView
+            case .curtain:
+                curtainAnimationView
+            case .drip:
+                dripAnimationView
             }
         }
         .onAppear {
@@ -213,18 +220,17 @@ struct OverlayAnimationView: View {
                 startIrisLightModeAnimation()
             }
         case .wipe:
-            if isDarkMode {
-                startWipeDarkModeAnimation()
-            } else {
-                startWipeLightModeAnimation()
-            }
-        case .tv, .shutter, .blinds, .curtain, .drip:
-            // TODO: Implement these animations in later tasks
-            if isDarkMode {
-                startIrisDarkModeAnimation()
-            } else {
-                startIrisLightModeAnimation()
-            }
+            startWipeAnimation(expectedDarkMode: isDarkMode)
+        case .tv:
+            startTvAnimation(expectedDarkMode: isDarkMode)
+        case .shutter:
+            startShutterAnimation(expectedDarkMode: isDarkMode)
+        case .blinds:
+            startBlindsAnimation(expectedDarkMode: isDarkMode)
+        case .curtain:
+            startCurtainAnimation(expectedDarkMode: isDarkMode)
+        case .drip:
+            startDripAnimation(expectedDarkMode: isDarkMode)
         }
     }
     
@@ -286,41 +292,98 @@ struct OverlayAnimationView: View {
     }
     
     // MARK: - Wipe Animation Methods
-    private func startWipeDarkModeAnimation() {
-        startWipeAnimation(expectedDarkMode: true)
-    }
-    
-    private func startWipeLightModeAnimation() {
-        startWipeAnimation(expectedDarkMode: false)
-    }
-    
     private func startWipeAnimation(expectedDarkMode: Bool) {
         // Start with wipe completely off-screen to the left
         wipeProgress = 0.0
         overlayOpacity = 1.0
-        
+
         // Much faster wipe to full coverage
         withAnimation(.easeInOut(duration: 0.2)) {
             wipeProgress = 0.6  // Screen fully covered
         }
-        
+
         // Trigger mode change when screen is fully covered
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             self.onBlackReached()
-            
+
             // Wait for system appearance change, then quick completion
             self.waitForDarkModeChange(expectedDarkMode: expectedDarkMode) {
                 withAnimation(.easeInOut(duration: 0.25)) {
                     self.wipeProgress = 1.1  // Complete the wipe
                 }
-                
+
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
                     self.onComplete()
                 }
             }
         }
     }
-    
+
+    // MARK: - TV Animation
+    @ViewBuilder
+    private var tvAnimationView: some View {
+        Color.black.ignoresSafeArea()
+    }
+
+    private func startTvAnimation(expectedDarkMode: Bool) {
+        onBlackReached()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.onComplete()
+        }
+    }
+
+    // MARK: - Shutter Animation
+    @ViewBuilder
+    private var shutterAnimationView: some View {
+        Color.black.ignoresSafeArea()
+    }
+
+    private func startShutterAnimation(expectedDarkMode: Bool) {
+        onBlackReached()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.onComplete()
+        }
+    }
+
+    // MARK: - Blinds Animation
+    @ViewBuilder
+    private var blindsAnimationView: some View {
+        Color.black.ignoresSafeArea()
+    }
+
+    private func startBlindsAnimation(expectedDarkMode: Bool) {
+        onBlackReached()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.onComplete()
+        }
+    }
+
+    // MARK: - Curtain Animation
+    @ViewBuilder
+    private var curtainAnimationView: some View {
+        Color.black.ignoresSafeArea()
+    }
+
+    private func startCurtainAnimation(expectedDarkMode: Bool) {
+        onBlackReached()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.onComplete()
+        }
+    }
+
+    // MARK: - Drip Animation
+    @ViewBuilder
+    private var dripAnimationView: some View {
+        Color.black.ignoresSafeArea()
+    }
+
+    private func startDripAnimation(expectedDarkMode: Bool) {
+        onBlackReached()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            self.onComplete()
+        }
+    }
+
     private func waitForDarkModeChange(expectedDarkMode: Bool, completion: @escaping () -> Void) {
         let checkAppearance = {
             let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
