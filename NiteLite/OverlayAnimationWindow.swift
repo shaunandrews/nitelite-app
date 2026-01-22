@@ -322,13 +322,94 @@ struct OverlayAnimationView: View {
     // MARK: - TV Animation
     @ViewBuilder
     private var tvAnimationView: some View {
-        Color.black.ignoresSafeArea()
+        ZStack {
+            // Black background
+            Color.black
+                .ignoresSafeArea()
+
+            // The "screen" that shrinks - white rectangle that gets masked out
+            Rectangle()
+                .fill(Color.white)
+                .scaleEffect(x: tvScaleX, y: tvScaleY)
+                .blendMode(.destinationOut)
+
+            // CRT dot glow in center (appears when fully collapsed)
+            Ellipse()
+                .fill(Color.white)
+                .frame(width: 8, height: 4)
+                .blur(radius: 3)
+                .opacity(tvDotOpacity)
+        }
+        .compositingGroup()
+        .opacity(overlayOpacity)
     }
 
     private func startTvAnimation(expectedDarkMode: Bool) {
-        onBlackReached()
+        // Reset state
+        tvScaleX = 1.0
+        tvScaleY = 1.0
+        tvDotOpacity = 0.0
+        overlayOpacity = 1.0
+
+        // Phase 1: Squeeze vertically to a line (0.1s)
+        withAnimation(.easeIn(duration: 0.1)) {
+            tvScaleY = 0.005
+        }
+
+        // Phase 2: Collapse horizontally to dot + show glow (0.08s)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.onComplete()
+            withAnimation(.easeIn(duration: 0.08)) {
+                self.tvScaleX = 0.0
+            }
+            withAnimation(.easeIn(duration: 0.04)) {
+                self.tvDotOpacity = 1.0
+            }
+        }
+
+        // Phase 3: Fade dot, trigger mode change (0.05s)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+            withAnimation(.easeOut(duration: 0.05)) {
+                self.tvDotOpacity = 0.0
+            }
+        }
+
+        // Now fully black - trigger the toggle
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.23) {
+            self.onBlackReached()
+
+            // Wait for system, then reverse the animation
+            self.waitForDarkModeChange(expectedDarkMode: expectedDarkMode) {
+                // Show dot briefly
+                withAnimation(.easeOut(duration: 0.03)) {
+                    self.tvDotOpacity = 0.8
+                }
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) {
+                    // Expand to line
+                    withAnimation(.easeOut(duration: 0.06)) {
+                        self.tvScaleX = 1.0
+                        self.tvDotOpacity = 0.0
+                    }
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
+                        // Expand to full
+                        withAnimation(.easeOut(duration: 0.08)) {
+                            self.tvScaleY = 1.0
+                        }
+
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
+                            // Fade out overlay
+                            withAnimation(.easeOut(duration: 0.05)) {
+                                self.overlayOpacity = 0.0
+                            }
+
+                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                                self.onComplete()
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
