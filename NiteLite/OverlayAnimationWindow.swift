@@ -97,7 +97,24 @@ struct OverlayAnimationView: View {
     @State private var fadeOpacity: Double = 0.0
     @State private var overlayOpacity: Double = 1.0
     @State private var wipeProgress: CGFloat = 0.0
-    
+
+    // TV animation state
+    @State private var tvScaleX: CGFloat = 1.0
+    @State private var tvScaleY: CGFloat = 1.0
+    @State private var tvDotOpacity: Double = 0.0
+
+    // Shutter animation state
+    @State private var shutterProgress: CGFloat = 0.0
+
+    // Blinds animation state
+    @State private var blindsProgress: CGFloat = 0.0
+
+    // Curtain animation state
+    @State private var curtainProgress: CGFloat = 0.0
+
+    // Drip animation state
+    @State private var dripProgress: CGFloat = 0.0
+
     var body: some View {
         Group {
             switch animationType {
