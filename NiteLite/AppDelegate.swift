@@ -7,6 +7,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var darkModeManager = DarkModeManager()
     private var animationManager = OverlayAnimationManager()
     private var hotKeyRef: EventHotKeyRef?
+    private var isToggling = false  // Debounce flag to prevent rapid toggles
     
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Hide the app from the dock
@@ -74,22 +75,30 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func performDarkModeToggle() {
+        // Debounce: prevent rapid toggles while animation is in progress
+        guard !isToggling else {
+            print("Toggle already in progress, ignoring")
+            return
+        }
+        isToggling = true
+
         print("Status bar button clicked")
-        
+
         // Get current state before toggle
         let wasInDarkMode = darkModeManager.isDarkModeEnabled()
         print("Current mode: \(wasInDarkMode ? "Dark" : "Light")")
-        
+
         // Determine what mode we're switching TO
         let switchingToDarkMode = !wasInDarkMode
-        
+
         // Start the animation immediately, toggle dark mode when black is reached, then fade out
         animationManager.showTransitionAnimation(isDarkMode: switchingToDarkMode, onBlackReached: { [weak self] in
             // Screen is now fully black - toggle dark mode
             self?.performDarkModeToggleInternal(wasInDarkMode: wasInDarkMode)
         }) { [weak self] in
-            // Animation and fade completed - update icon
+            // Animation and fade completed - update icon and reset debounce
             self?.updateStatusBarIcon()
+            self?.isToggling = false
         }
     }
     

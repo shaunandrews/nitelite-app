@@ -284,17 +284,17 @@ struct OverlayAnimationView: View {
             let isDark = NSApp.effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
             return isDark == expectedDarkMode
         }
-        
+
         // If already in expected mode, complete immediately
         if checkAppearance() {
             completion()
             return
         }
-        
-        // More responsive polling with shorter timeout
+
+        // Fast polling with shorter timeout - system typically responds in ~50-100ms
         var attempts = 0
-        let maxAttempts = 40 // 0.64 second timeout at 16ms intervals
-        
+        let maxAttempts = 15 // 240ms timeout at 16ms intervals (was 640ms)
+
         Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { timer in
             attempts += 1
             if checkAppearance() || attempts >= maxAttempts {
@@ -311,11 +311,9 @@ class OverlayAnimationManager {
     private var overlayWindows: [OverlayAnimationWindow] = []
     
     func showTransitionAnimation(isDarkMode: Bool, onBlackReached: @escaping () -> Void, completion: @escaping () -> Void) {
-        // Ensure we're on the main thread
-        DispatchQueue.main.async { [weak self] in
-            let animationType = AnimationPreferences.shared.animationType
-            self?.performAnimation(isDarkMode: isDarkMode, animationType: animationType, onBlackReached: onBlackReached, completion: completion)
-        }
+        // Called from UI event handlers, already on main thread
+        let animationType = AnimationPreferences.shared.animationType
+        performAnimation(isDarkMode: isDarkMode, animationType: animationType, onBlackReached: onBlackReached, completion: completion)
     }
     
     private func performAnimation(isDarkMode: Bool, animationType: AnimationType, onBlackReached: @escaping () -> Void, completion: @escaping () -> Void) {

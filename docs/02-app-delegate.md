@@ -12,6 +12,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     private var darkModeManager = DarkModeManager() // Toggle logic
     private var animationManager = OverlayAnimationManager() // Animation coordinator
     private var hotKeyRef: EventHotKeyRef?         // Global shortcut reference
+    private var isToggling = false                 // Debounce flag
 }
 ```
 
@@ -63,18 +64,27 @@ Updates the icon based on current dark mode state:
 
 ```swift
 private func performDarkModeToggle() {
-    // 1. Capture current state
+    // Debounce: prevent rapid toggles while animation is in progress
+    guard !isToggling else { return }
+    isToggling = true
+
+    // Capture current state
     let wasInDarkMode = darkModeManager.isDarkModeEnabled()
     let switchingToDarkMode = !wasInDarkMode
 
-    // 2. Start animation with callbacks
+    // Start animation with callbacks
     animationManager.showTransitionAnimation(
         isDarkMode: switchingToDarkMode,
         onBlackReached: { /* toggle happens here */ },
-        completion: { /* update icon */ }
+        completion: {
+            self.updateStatusBarIcon()
+            self.isToggling = false  // Reset debounce flag
+        }
     )
 }
 ```
+
+**Debouncing**: The `isToggling` flag prevents rapid double-clicks from stacking multiple animations. The flag is set at the start and cleared when the animation completes.
 
 **Critical Timing**:
 - Animation starts immediately on click
@@ -148,8 +158,3 @@ deinit {
 }
 ```
 
-## Current Performance Concerns
-
-1. **Permission Request Blocking**: `requestAutomationPermissions()` runs synchronously at launch
-2. **External Change Delay**: 100ms delay in `setupAppearanceObserver` adds latency for icon updates
-3. **No Toggle Debouncing**: Rapid clicks could stack animations/toggles

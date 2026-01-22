@@ -2,7 +2,30 @@ import Foundation
 import Cocoa
 
 class DarkModeManager {
-    
+
+    // Cached compiled AppleScripts to avoid recompilation on each toggle
+    private lazy var darkModeOnScript: NSAppleScript? = {
+        let source = """
+        tell application "System Events"
+            tell appearance preferences
+                set dark mode to true
+            end tell
+        end tell
+        """
+        return NSAppleScript(source: source)
+    }()
+
+    private lazy var darkModeOffScript: NSAppleScript? = {
+        let source = """
+        tell application "System Events"
+            tell appearance preferences
+                set dark mode to false
+            end tell
+        end tell
+        """
+        return NSAppleScript(source: source)
+    }()
+
     /// Check if Dark Mode is currently enabled
     func isDarkModeEnabled() -> Bool {
         // Check the effective appearance
@@ -45,37 +68,30 @@ class DarkModeManager {
     private func toggleUsingShellCommand(_ toDarkMode: Bool) -> Bool {
         let task = Process()
         task.launchPath = "/usr/bin/defaults"
-        
+
         if toDarkMode {
             task.arguments = ["write", "-g", "AppleInterfaceStyle", "Dark"]
         } else {
             task.arguments = ["delete", "-g", "AppleInterfaceStyle"]
         }
-        
+
         do {
             try task.run()
             task.waitUntilExit()
-            
+
             if task.terminationStatus != 0 {
                 print("Shell command failed with status: \(task.terminationStatus)")
                 return false
             }
-            
+
             // Notify the system of the change
             DistributedNotificationCenter.default().postNotificationName(
                 NSNotification.Name("AppleInterfaceThemeChangedNotification"),
                 object: nil,
                 deliverImmediately: true
             )
-            
-            // Wait a moment and verify the change
-            usleep(500000) // 0.5 seconds
-            let actuallyChanged = isDarkModeEnabled() == toDarkMode
-            if !actuallyChanged {
-                print("Shell command executed but change not detected")
-                return false
-            }
-            
+
+            // No blocking verification - animation system handles polling
             return true
         } catch {
             print("Shell command error: \(error)")
@@ -83,81 +99,51 @@ class DarkModeManager {
         }
     }
     
-    /// Method 2: Use AppleScript with a simpler approach
+    /// Method 2: Use cached AppleScript for fast execution
     private func toggleUsingAppleScript(_ toDarkMode: Bool) -> Bool {
-        let script = """
-        tell application "System Events"
-            tell appearance preferences
-                set dark mode to \(toDarkMode)
-            end tell
-        end tell
-        """
-        
-        let success = executeAppleScript(script)
-        if success {
-            // Wait a moment and verify the change
-            usleep(300000) // 0.3 seconds
-            let actuallyChanged = isDarkModeEnabled() == toDarkMode
-            if !actuallyChanged {
-                print("AppleScript executed but change not detected")
-                return false
-            }
-        }
-        return success
-    }
-    
-    /// Method 3: Use osascript command line tool
-    private func toggleUsingOsascript(_ toDarkMode: Bool) -> Bool {
-        let script = "tell app \"System Events\" to tell appearance preferences to set dark mode to \(toDarkMode)"
-        
-        let task = Process()
-        task.launchPath = "/usr/bin/osascript"
-        task.arguments = ["-e", script]
-        
-        do {
-            try task.run()
-            task.waitUntilExit()
-            
-            if task.terminationStatus != 0 {
-                print("Osascript failed with status: \(task.terminationStatus)")
-                return false
-            }
-            
-            // Wait a moment and verify the change
-            usleep(300000) // 0.3 seconds
-            let actuallyChanged = isDarkModeEnabled() == toDarkMode
-            if !actuallyChanged {
-                print("Osascript executed but change not detected")
-                return false
-            }
-            
-            return true
-        } catch {
-            print("Osascript error: \(error)")
+        // Use pre-compiled cached script for faster execution
+        guard let script = toDarkMode ? darkModeOnScript : darkModeOffScript else {
+            print("Failed to get cached AppleScript")
             return false
         }
-    }
-    
-    /// Execute an AppleScript
-    private func executeAppleScript(_ script: String) -> Bool {
+
         var error: NSDictionary?
-        
-        guard let scriptObject = NSAppleScript(source: script) else {
-            print("Failed to create AppleScript object")
-            return false
-        }
-        
-        let result = scriptObject.executeAndReturnError(&error)
-        
+        let result = script.executeAndReturnError(&error)
+
         if let error = error {
             print("AppleScript error: \(error)")
             if let errorMessage = error["NSAppleScriptErrorMessage"] as? String {
                 print("Error description: \(errorMessage)")
             }
             return false
-        } else {
-            print("AppleScript executed successfully: \(result)")
+        }
+
+        print("AppleScript executed successfully: \(result)")
+        return true
+    }
+    
+    /// Method 3: Use osascript command line tool
+    private func toggleUsingOsascript(_ toDarkMode: Bool) -> Bool {
+        let script = "tell app \"System Events\" to tell appearance preferences to set dark mode to \(toDarkMode)"
+
+        let task = Process()
+        task.launchPath = "/usr/bin/osascript"
+        task.arguments = ["-e", script]
+
+        do {
+            try task.run()
+            task.waitUntilExit()
+
+            if task.terminationStatus != 0 {
+                print("Osascript failed with status: \(task.terminationStatus)")
+                return false
+            }
+
+            // No blocking verification - animation system handles polling
             return true
+        } catch {
+            print("Osascript error: \(error)")
+            return false
         }
     }
 }

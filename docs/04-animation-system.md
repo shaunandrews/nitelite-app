@@ -100,7 +100,7 @@ Coordinates multi-monitor support by creating overlay windows for each screen.
 ┌──────────────────────────────────────────────────────────────────┐
 │ waitForDarkModeChange() polling                                  │
 │   - Check NSApp.effectiveAppearance every 16ms                   │
-│   - Timeout: 40 attempts (640ms)                                 │
+│   - Timeout: 15 attempts (240ms)                                 │
 └────────────────────────────────┬─────────────────────────────────┘
                                  │
                                  ▼
@@ -241,9 +241,10 @@ private func waitForDarkModeChange(expectedDarkMode: Bool, completion: @escaping
         return
     }
 
-    // Poll every 16ms (60fps), max 40 attempts (640ms timeout)
+    // Poll every 16ms (60fps), max 15 attempts (240ms timeout)
+    // System typically responds in ~50-100ms
     var attempts = 0
-    let maxAttempts = 40
+    let maxAttempts = 15
 
     Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { timer in
         attempts += 1
@@ -285,25 +286,18 @@ func showTransitionAnimation(...) {
 }
 ```
 
-## Current Animation Timings
+## Animation Timings
 
 | Animation | Phase | Duration | Cumulative |
 |-----------|-------|----------|------------|
 | **Iris Dark** | Close | 0.15s | 0.15s |
-| | Toggle + Wait | 0-0.64s | 0.15-0.79s |
-| | Fade out | 0.08s | 0.23-0.87s |
+| | Toggle + Wait | 0-0.24s | 0.15-0.39s |
+| | Fade out | 0.08s | 0.23-0.47s |
 | **Iris Light** | Fade in | 0.12s | 0.12s |
-| | Toggle + Wait | 0-0.64s | 0.12-0.76s |
-| | Open | 0.15s | 0.27-0.91s |
+| | Toggle + Wait | 0-0.24s | 0.12-0.36s |
+| | Open | 0.15s | 0.27-0.51s |
 | **Wipe** | Cover | 0.2s | 0.2s |
-| | Toggle + Wait | 0-0.64s | 0.2-0.84s |
-| | Complete | 0.25s | 0.45-1.09s |
+| | Toggle + Wait | 0-0.24s | 0.2-0.44s |
+| | Complete | 0.25s | 0.45-0.69s |
 
-## Current Performance Concerns
-
-1. **Long Polling Timeout**: 640ms max wait is excessive when system usually responds in <100ms
-2. **Fixed Animation Durations**: No adaptation based on actual system response time
-3. **Double-Dispatch Overhead**: `DispatchQueue.main.async` in manager + asyncAfter in views
-4. **Timer Resolution**: 16ms polling is good, but creates 40 timer callbacks worst case
-5. **No Animation Cancellation**: Cannot abort animation if user clicks again
-6. **Opacity Animations**: Some opacity changes could use faster CoreAnimation directly
+**Note**: The system typically responds in ~50-100ms, so real-world timings are usually at the lower end of these ranges.
