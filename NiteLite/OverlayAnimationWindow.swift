@@ -494,13 +494,60 @@ struct OverlayAnimationView: View {
     // MARK: - Blinds Animation
     @ViewBuilder
     private var blindsAnimationView: some View {
-        Color.black.ignoresSafeArea()
+        let blindCount = 14
+        let blindHeight = screenSize.height / CGFloat(blindCount)
+
+        ZStack {
+            ForEach(0..<blindCount, id: \.self) { index in
+                let isFromLeft = index % 2 == 0
+                let staggerDelay = CGFloat(index) * 0.02
+                let adjustedProgress = max(0, min(1, (blindsProgress - staggerDelay) / (1 - staggerDelay * CGFloat(blindCount - 1) / CGFloat(blindCount))))
+
+                Rectangle()
+                    .fill(Color.black)
+                    .frame(width: screenSize.width, height: blindHeight + 1) // +1 to avoid gaps
+                    .offset(
+                        x: isFromLeft
+                            ? -screenSize.width * (1 - adjustedProgress)
+                            : screenSize.width * (1 - adjustedProgress),
+                        y: CGFloat(index) * blindHeight - screenSize.height / 2 + blindHeight / 2
+                    )
+            }
+        }
+        .frame(width: screenSize.width, height: screenSize.height)
+        .opacity(overlayOpacity)
     }
 
     private func startBlindsAnimation(expectedDarkMode: Bool) {
-        onBlackReached()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.onComplete()
+        // Reset state
+        blindsProgress = 0.0
+        overlayOpacity = 1.0
+
+        // Close blinds
+        withAnimation(.easeInOut(duration: 0.25)) {
+            blindsProgress = 1.0
+        }
+
+        // Fully closed - trigger toggle
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            self.onBlackReached()
+
+            self.waitForDarkModeChange(expectedDarkMode: expectedDarkMode) {
+                // Open blinds (reverse direction)
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    self.blindsProgress = 0.0
+                }
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    withAnimation(.easeOut(duration: 0.05)) {
+                        self.overlayOpacity = 0.0
+                    }
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        self.onComplete()
+                    }
+                }
+            }
         }
     }
 
