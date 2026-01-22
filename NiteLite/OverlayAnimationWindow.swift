@@ -86,6 +86,38 @@ class OverlayAnimationWindow: NSWindow {
     }
 }
 
+struct ShutterBlade: Shape {
+    let bladeIndex: Int
+    let totalBlades: Int
+    var progress: CGFloat // 0 = open, 1 = closed
+
+    var animatableData: CGFloat {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let maxRadius = sqrt(rect.width * rect.width + rect.height * rect.height)
+
+        let anglePerBlade = (2 * .pi) / CGFloat(totalBlades)
+        let startAngle = CGFloat(bladeIndex) * anglePerBlade - .pi / 2
+        let endAngle = startAngle + anglePerBlade
+
+        // Blade rotates inward as progress increases
+        let rotationAmount = progress * anglePerBlade * 0.6
+        let adjustedStart = startAngle + rotationAmount
+        let adjustedEnd = endAngle + rotationAmount
+
+        path.move(to: center)
+        path.addArc(center: center, radius: maxRadius, startAngle: .radians(adjustedStart), endAngle: .radians(adjustedEnd), clockwise: false)
+        path.closeSubpath()
+
+        return path
+    }
+}
+
 struct OverlayAnimationView: View {
     let isDarkMode: Bool
     let animationType: AnimationType
@@ -416,13 +448,46 @@ struct OverlayAnimationView: View {
     // MARK: - Shutter Animation
     @ViewBuilder
     private var shutterAnimationView: some View {
-        Color.black.ignoresSafeArea()
+        ZStack {
+            // Each blade
+            ForEach(0..<6, id: \.self) { index in
+                ShutterBlade(bladeIndex: index, totalBlades: 6, progress: shutterProgress)
+                    .fill(Color.black)
+            }
+        }
+        .opacity(overlayOpacity)
     }
 
     private func startShutterAnimation(expectedDarkMode: Bool) {
-        onBlackReached()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.onComplete()
+        // Reset state
+        shutterProgress = 0.0
+        overlayOpacity = 1.0
+
+        // Close shutter
+        withAnimation(.easeInOut(duration: 0.2)) {
+            shutterProgress = 1.0
+        }
+
+        // Fully closed - trigger toggle
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            self.onBlackReached()
+
+            self.waitForDarkModeChange(expectedDarkMode: expectedDarkMode) {
+                // Open shutter
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    self.shutterProgress = 0.0
+                }
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    withAnimation(.easeOut(duration: 0.05)) {
+                        self.overlayOpacity = 0.0
+                    }
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        self.onComplete()
+                    }
+                }
+            }
         }
     }
 
