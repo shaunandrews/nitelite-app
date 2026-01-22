@@ -118,6 +118,48 @@ struct ShutterBlade: Shape {
     }
 }
 
+struct DripEdge: Shape {
+    var progress: CGFloat // 0 = above screen, 1 = covering screen
+    let dripCount: Int
+    let screenHeight: CGFloat
+
+    var animatableData: CGFloat {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+
+        // The base Y position moves down as progress increases
+        let baseY = -screenHeight + (screenHeight * 2 * progress)
+
+        path.move(to: CGPoint(x: 0, y: 0))
+        path.addLine(to: CGPoint(x: 0, y: baseY))
+
+        // Create wavy bottom edge with drips
+        let dripWidth = rect.width / CGFloat(dripCount)
+        for i in 0..<dripCount {
+            let x = CGFloat(i) * dripWidth
+            let nextX = CGFloat(i + 1) * dripWidth
+            let midX = x + dripWidth / 2
+
+            // Vary drip depth based on position (pseudo-random but deterministic)
+            let dripDepth = dripWidth * 0.5 * (1 + sin(CGFloat(i) * 1.3)) * 0.5
+
+            path.addQuadCurve(
+                to: CGPoint(x: nextX, y: baseY),
+                control: CGPoint(x: midX, y: baseY + dripDepth)
+            )
+        }
+
+        path.addLine(to: CGPoint(x: rect.width, y: 0))
+        path.closeSubpath()
+
+        return path
+    }
+}
+
 struct OverlayAnimationView: View {
     let isDarkMode: Bool
     let animationType: AnimationType
@@ -607,13 +649,42 @@ struct OverlayAnimationView: View {
     // MARK: - Drip Animation
     @ViewBuilder
     private var dripAnimationView: some View {
-        Color.black.ignoresSafeArea()
+        DripEdge(progress: dripProgress, dripCount: 20, screenHeight: screenSize.height)
+            .fill(Color.black)
+            .frame(width: screenSize.width, height: screenSize.height)
+            .opacity(overlayOpacity)
     }
 
     private func startDripAnimation(expectedDarkMode: Bool) {
-        onBlackReached()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.onComplete()
+        // Reset state
+        dripProgress = 0.0
+        overlayOpacity = 1.0
+
+        // Drip down to cover screen
+        withAnimation(.easeIn(duration: 0.25)) {
+            dripProgress = 1.0
+        }
+
+        // Fully covered - trigger toggle
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+            self.onBlackReached()
+
+            self.waitForDarkModeChange(expectedDarkMode: expectedDarkMode) {
+                // Continue dripping off bottom
+                withAnimation(.easeOut(duration: 0.25)) {
+                    self.dripProgress = 2.0
+                }
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                    withAnimation(.easeOut(duration: 0.05)) {
+                        self.overlayOpacity = 0.0
+                    }
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        self.onComplete()
+                    }
+                }
+            }
         }
     }
 
