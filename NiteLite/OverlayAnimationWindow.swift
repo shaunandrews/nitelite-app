@@ -4,13 +4,28 @@ import SwiftUI
 enum AnimationType: String, CaseIterable {
     case iris = "iris"
     case wipe = "wipe"
-    
+    case tv = "tv"
+    case shutter = "shutter"
+    case blinds = "blinds"
+    case curtain = "curtain"
+    case drip = "drip"
+
     var displayName: String {
         switch self {
         case .iris:
             return "Classic Film Iris"
         case .wipe:
             return "Left-Right Wipe"
+        case .tv:
+            return "Old TV Turn-off"
+        case .shutter:
+            return "Camera Shutter"
+        case .blinds:
+            return "Venetian Blinds"
+        case .curtain:
+            return "Curtain Call"
+        case .drip:
+            return "Drip"
         }
     }
 }
@@ -90,6 +105,9 @@ struct OverlayAnimationView: View {
                 irisAnimationView
             case .wipe:
                 wipeAnimationView
+            case .tv, .shutter, .blinds, .curtain, .drip:
+                // TODO: Implement these animations in later tasks
+                irisAnimationView
             }
         }
         .onAppear {
@@ -182,6 +200,13 @@ struct OverlayAnimationView: View {
                 startWipeDarkModeAnimation()
             } else {
                 startWipeLightModeAnimation()
+            }
+        case .tv, .shutter, .blinds, .curtain, .drip:
+            // TODO: Implement these animations in later tasks
+            if isDarkMode {
+                startIrisDarkModeAnimation()
+            } else {
+                startIrisLightModeAnimation()
             }
         }
     }
