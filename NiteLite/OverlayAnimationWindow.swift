@@ -554,13 +554,53 @@ struct OverlayAnimationView: View {
     // MARK: - Curtain Animation
     @ViewBuilder
     private var curtainAnimationView: some View {
-        Color.black.ignoresSafeArea()
+        ZStack {
+            // Left curtain
+            Rectangle()
+                .fill(Color.black)
+                .frame(width: screenSize.width / 2 + 2) // +2 for overlap
+                .offset(x: -screenSize.width / 4 - screenSize.width / 2 * (1 - curtainProgress))
+
+            // Right curtain
+            Rectangle()
+                .fill(Color.black)
+                .frame(width: screenSize.width / 2 + 2)
+                .offset(x: screenSize.width / 4 + screenSize.width / 2 * (1 - curtainProgress))
+        }
+        .frame(width: screenSize.width, height: screenSize.height)
+        .opacity(overlayOpacity)
     }
 
     private func startCurtainAnimation(expectedDarkMode: Bool) {
-        onBlackReached()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            self.onComplete()
+        // Reset state
+        curtainProgress = 0.0
+        overlayOpacity = 1.0
+
+        // Close curtains
+        withAnimation(.easeInOut(duration: 0.2)) {
+            curtainProgress = 1.0
+        }
+
+        // Fully closed - trigger toggle
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            self.onBlackReached()
+
+            self.waitForDarkModeChange(expectedDarkMode: expectedDarkMode) {
+                // Open curtains
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    self.curtainProgress = 0.0
+                }
+
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                    withAnimation(.easeOut(duration: 0.05)) {
+                        self.overlayOpacity = 0.0
+                    }
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                        self.onComplete()
+                    }
+                }
+            }
         }
     }
 
