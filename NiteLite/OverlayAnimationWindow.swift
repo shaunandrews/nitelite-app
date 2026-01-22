@@ -796,22 +796,22 @@ struct OverlayAnimationView: View {
         dripProgress = 0.0
         overlayOpacity = 1.0
 
-        // Drip down to cover screen
-        withAnimation(.easeIn(duration: 0.25)) {
+        // Drip down to cover screen - slower with easeIn for accelerating drip feel
+        withAnimation(.easeIn(duration: 0.4)) {
             dripProgress = 1.0
         }
 
         // Fully covered - trigger toggle
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
             self.onBlackReached()
 
             self.waitForDarkModeChange(expectedDarkMode: expectedDarkMode) {
-                // Continue dripping off bottom
-                withAnimation(.easeOut(duration: 0.25)) {
+                // Continue dripping off bottom - easeOut so it slows as it exits
+                withAnimation(.easeOut(duration: 0.35)) {
                     self.dripProgress = 2.0
                 }
 
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                     withAnimation(.easeOut(duration: 0.05)) {
                         self.overlayOpacity = 0.0
                     }
