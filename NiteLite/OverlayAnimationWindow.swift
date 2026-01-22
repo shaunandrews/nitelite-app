@@ -5,10 +5,8 @@ enum AnimationType: String, CaseIterable {
     case iris = "iris"
     case wipe = "wipe"
     case tv = "tv"
-    case shutter = "shutter"
     case blinds = "blinds"
     case curtain = "curtain"
-    case drip = "drip"
 
     var displayName: String {
         switch self {
@@ -18,14 +16,10 @@ enum AnimationType: String, CaseIterable {
             return "Left-Right Wipe"
         case .tv:
             return "Old TV Turn-off"
-        case .shutter:
-            return "Camera Shutter"
         case .blinds:
             return "Venetian Blinds"
         case .curtain:
             return "Curtain Call"
-        case .drip:
-            return "Drip"
         }
     }
 }
@@ -83,161 +77,6 @@ class OverlayAnimationWindow: NSWindow {
         
         // Show the window and start animation
         self.makeKeyAndOrderFront(nil)
-    }
-}
-
-/// A camera aperture blade that pivots from its outer edge anchor point.
-/// Each blade is a curved trapezoidal shape that rotates inward to close the aperture.
-struct ApertureBlade: Shape {
-    let bladeIndex: Int
-    let totalBlades: Int
-    var progress: CGFloat // 0 = open, 1 = closed
-
-    var animatableData: CGFloat {
-        get { progress }
-        set { progress = newValue }
-    }
-
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        let maxRadius = sqrt(rect.width * rect.width + rect.height * rect.height) / 2 * 1.3
-
-        // Each blade is positioned around the circle
-        let anglePerBlade = (2 * .pi) / CGFloat(totalBlades)
-        let baseAngle = CGFloat(bladeIndex) * anglePerBlade - .pi / 2
-
-        // The pivot point is on the outer edge of the aperture ring
-        let pivotRadius = maxRadius * 0.95
-        let pivotAngle = baseAngle
-        let pivotPoint = CGPoint(
-            x: center.x + cos(pivotAngle) * pivotRadius,
-            y: center.y + sin(pivotAngle) * pivotRadius
-        )
-
-        // Blade rotation: when open (progress=0), blade points outward
-        // When closed (progress=1), blade rotates to cover the center
-        let maxRotation: CGFloat = .pi * 0.42 // How much the blade rotates when closing
-        let bladeRotation = baseAngle + .pi + (progress * maxRotation)
-
-        // Blade dimensions
-        let bladeLength = maxRadius * 1.1
-        let bladeWidthBase = maxRadius * 0.55 // Width at pivot end
-        let bladeWidthTip = maxRadius * 0.25  // Width at inner end
-
-        // Calculate blade corners relative to pivot, then rotate
-        // The blade extends from the pivot toward the center
-        let tipDistance = bladeLength
-
-        // Four corners of the blade (roughly trapezoidal with curved edges)
-        // Corner 1: base left (at pivot)
-        let corner1Offset = CGPoint(
-            x: cos(bladeRotation + .pi/2) * bladeWidthBase/2,
-            y: sin(bladeRotation + .pi/2) * bladeWidthBase/2
-        )
-        let corner1 = CGPoint(x: pivotPoint.x + corner1Offset.x, y: pivotPoint.y + corner1Offset.y)
-
-        // Corner 2: base right (at pivot)
-        let corner2Offset = CGPoint(
-            x: cos(bladeRotation - .pi/2) * bladeWidthBase/2,
-            y: sin(bladeRotation - .pi/2) * bladeWidthBase/2
-        )
-        let corner2 = CGPoint(x: pivotPoint.x + corner2Offset.x, y: pivotPoint.y + corner2Offset.y)
-
-        // Tip center (extends toward center)
-        let tipCenter = CGPoint(
-            x: pivotPoint.x + cos(bladeRotation) * tipDistance,
-            y: pivotPoint.y + sin(bladeRotation) * tipDistance
-        )
-
-        // Corner 3: tip right
-        let corner3Offset = CGPoint(
-            x: cos(bladeRotation - .pi/2) * bladeWidthTip/2,
-            y: sin(bladeRotation - .pi/2) * bladeWidthTip/2
-        )
-        let corner3 = CGPoint(x: tipCenter.x + corner3Offset.x, y: tipCenter.y + corner3Offset.y)
-
-        // Corner 4: tip left
-        let corner4Offset = CGPoint(
-            x: cos(bladeRotation + .pi/2) * bladeWidthTip/2,
-            y: sin(bladeRotation + .pi/2) * bladeWidthTip/2
-        )
-        let corner4 = CGPoint(x: tipCenter.x + corner4Offset.x, y: tipCenter.y + corner4Offset.y)
-
-        // Draw the blade with slightly curved edges for realism
-        path.move(to: corner1)
-
-        // Left edge (from base to tip) - slight curve
-        let leftMid = CGPoint(
-            x: (corner1.x + corner4.x) / 2 + cos(bladeRotation + .pi/2) * bladeLength * 0.03,
-            y: (corner1.y + corner4.y) / 2 + sin(bladeRotation + .pi/2) * bladeLength * 0.03
-        )
-        path.addQuadCurve(to: corner4, control: leftMid)
-
-        // Tip edge
-        path.addLine(to: corner3)
-
-        // Right edge (from tip to base) - slight curve
-        let rightMid = CGPoint(
-            x: (corner3.x + corner2.x) / 2 + cos(bladeRotation - .pi/2) * bladeLength * 0.03,
-            y: (corner3.y + corner2.y) / 2 + sin(bladeRotation - .pi/2) * bladeLength * 0.03
-        )
-        path.addQuadCurve(to: corner2, control: rightMid)
-
-        // Base edge
-        path.addLine(to: corner1)
-        path.closeSubpath()
-
-        return path
-    }
-}
-
-/// The aperture opening shape - a shrinking polygon that represents the hole in the center
-struct ApertureOpening: Shape {
-    let bladeCount: Int
-    var progress: CGFloat // 0 = fully open, 1 = fully closed
-
-    var animatableData: CGFloat {
-        get { progress }
-        set { progress = newValue }
-    }
-
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        let center = CGPoint(x: rect.midX, y: rect.midY)
-        let maxRadius = sqrt(rect.width * rect.width + rect.height * rect.height) / 2
-
-        // The opening shrinks as progress increases
-        // At progress=0, the opening is large; at progress=1, it's nearly zero
-        let openingRadius = maxRadius * 0.85 * (1 - progress)
-
-        guard openingRadius > 1 else {
-            // When fully closed, just return empty path
-            return path
-        }
-
-        // Create a polygon with bladeCount sides, slightly rotated based on progress
-        // This creates the characteristic aperture rotation effect
-        let rotationOffset = progress * .pi / CGFloat(bladeCount) * 0.5
-
-        let anglePerVertex = (2 * .pi) / CGFloat(bladeCount)
-
-        for i in 0..<bladeCount {
-            let angle = CGFloat(i) * anglePerVertex - .pi/2 + rotationOffset
-            let point = CGPoint(
-                x: center.x + cos(angle) * openingRadius,
-                y: center.y + sin(angle) * openingRadius
-            )
-
-            if i == 0 {
-                path.move(to: point)
-            } else {
-                path.addLine(to: point)
-            }
-        }
-        path.closeSubpath()
-
-        return path
     }
 }
 
@@ -338,48 +177,6 @@ struct CurtainShape: Shape {
     }
 }
 
-struct DripEdge: Shape {
-    var progress: CGFloat // 0 = above screen, 1 = covering screen
-    let dripCount: Int
-    let screenHeight: CGFloat
-
-    var animatableData: CGFloat {
-        get { progress }
-        set { progress = newValue }
-    }
-
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-
-        // The base Y position moves down as progress increases
-        let baseY = -screenHeight + (screenHeight * 2 * progress)
-
-        path.move(to: CGPoint(x: 0, y: 0))
-        path.addLine(to: CGPoint(x: 0, y: baseY))
-
-        // Create wavy bottom edge with drips
-        let dripWidth = rect.width / CGFloat(dripCount)
-        for i in 0..<dripCount {
-            let x = CGFloat(i) * dripWidth
-            let nextX = CGFloat(i + 1) * dripWidth
-            let midX = x + dripWidth / 2
-
-            // Vary drip depth based on position (pseudo-random but deterministic)
-            let dripDepth = dripWidth * 0.5 * (1 + sin(CGFloat(i) * 1.3)) * 0.5
-
-            path.addQuadCurve(
-                to: CGPoint(x: nextX, y: baseY),
-                control: CGPoint(x: midX, y: baseY + dripDepth)
-            )
-        }
-
-        path.addLine(to: CGPoint(x: rect.width, y: 0))
-        path.closeSubpath()
-
-        return path
-    }
-}
-
 struct OverlayAnimationView: View {
     let isDarkMode: Bool
     let animationType: AnimationType
@@ -397,18 +194,12 @@ struct OverlayAnimationView: View {
     @State private var tvScaleY: CGFloat = 1.0
     @State private var tvDotOpacity: Double = 0.0
 
-    // Shutter animation state
-    @State private var shutterProgress: CGFloat = 0.0
-
     // Blinds animation state
     @State private var blindsProgress: CGFloat = 0.0
 
     // Curtain animation state
     @State private var curtainProgress: CGFloat = 0.0
     @State private var curtainWavePhase: CGFloat = 0.0
-
-    // Drip animation state
-    @State private var dripProgress: CGFloat = 0.0
 
     var body: some View {
         Group {
@@ -419,14 +210,10 @@ struct OverlayAnimationView: View {
                 wipeAnimationView
             case .tv:
                 tvAnimationView
-            case .shutter:
-                shutterAnimationView
             case .blinds:
                 blindsAnimationView
             case .curtain:
                 curtainAnimationView
-            case .drip:
-                dripAnimationView
             }
         }
         .onAppear {
@@ -518,14 +305,10 @@ struct OverlayAnimationView: View {
             startWipeAnimation(expectedDarkMode: isDarkMode)
         case .tv:
             startTvAnimation(expectedDarkMode: isDarkMode)
-        case .shutter:
-            startShutterAnimation(expectedDarkMode: isDarkMode)
         case .blinds:
             startBlindsAnimation(expectedDarkMode: isDarkMode)
         case .curtain:
             startCurtainAnimation(expectedDarkMode: isDarkMode)
-        case .drip:
-            startDripAnimation(expectedDarkMode: isDarkMode)
         }
     }
     
@@ -708,65 +491,6 @@ struct OverlayAnimationView: View {
         }
     }
 
-    // MARK: - Shutter Animation
-    @ViewBuilder
-    private var shutterAnimationView: some View {
-        let bladeCount = 8
-
-        ZStack {
-            // Black background (visible through the aperture opening)
-            Color.black
-                .ignoresSafeArea()
-
-            // The aperture opening (transparent hole) - uses destination out to punch through
-            ApertureOpening(bladeCount: bladeCount, progress: shutterProgress)
-                .fill(Color.white)
-                .blendMode(.destinationOut)
-
-            // Draw blade outlines/edges for visual definition
-            // This creates subtle visible blade edges around the opening
-            ForEach(0..<bladeCount, id: \.self) { index in
-                ApertureBlade(bladeIndex: index, totalBlades: bladeCount, progress: shutterProgress)
-                    .stroke(Color.black.opacity(0.3), lineWidth: 1)
-            }
-        }
-        .compositingGroup()
-        .opacity(overlayOpacity)
-    }
-
-    private func startShutterAnimation(expectedDarkMode: Bool) {
-        // Reset state
-        shutterProgress = 0.0
-        overlayOpacity = 1.0
-
-        // Close shutter
-        withAnimation(.easeInOut(duration: 0.2)) {
-            shutterProgress = 1.0
-        }
-
-        // Fully closed - trigger toggle
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            self.onBlackReached()
-
-            self.waitForDarkModeChange(expectedDarkMode: expectedDarkMode) {
-                // Open shutter
-                withAnimation(.easeInOut(duration: 0.2)) {
-                    self.shutterProgress = 0.0
-                }
-
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                    withAnimation(.easeOut(duration: 0.05)) {
-                        self.overlayOpacity = 0.0
-                    }
-
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                        self.onComplete()
-                    }
-                }
-            }
-        }
-    }
-
     // MARK: - Blinds Animation
     @ViewBuilder
     private var blindsAnimationView: some View {
@@ -861,76 +585,32 @@ struct OverlayAnimationView: View {
         curtainWavePhase = 0.0
         overlayOpacity = 1.0
 
-        // Close curtains with spring animation for natural cloth movement
-        // The spring creates slight overshoot and settle (bounce when curtains meet)
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.7, blendDuration: 0)) {
+        // Close curtains with spring animation - slow and dramatic
+        withAnimation(.spring(response: 0.7, dampingFraction: 0.75, blendDuration: 0)) {
             curtainProgress = 1.0
         }
 
         // Animate wave phase to create rippling cloth effect during close
-        withAnimation(.easeOut(duration: 0.4)) {
+        withAnimation(.easeOut(duration: 0.8)) {
             curtainWavePhase = .pi * 2 // One full ripple cycle
         }
 
         // Fully closed - trigger toggle (timing accounts for spring settle)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
             self.onBlackReached()
 
             self.waitForDarkModeChange(expectedDarkMode: expectedDarkMode) {
                 // Open curtains with spring for dramatic reveal
-                // Slightly faster response, less damping for swooshing open feel
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.65, blendDuration: 0)) {
+                withAnimation(.spring(response: 0.6, dampingFraction: 0.7, blendDuration: 0)) {
                     self.curtainProgress = 0.0
                 }
 
                 // Continue wave animation during open
-                withAnimation(.easeIn(duration: 0.35)) {
+                withAnimation(.easeIn(duration: 0.7)) {
                     self.curtainWavePhase = .pi * 4 // Another cycle of ripples
                 }
 
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                    withAnimation(.easeOut(duration: 0.05)) {
-                        self.overlayOpacity = 0.0
-                    }
-
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                        self.onComplete()
-                    }
-                }
-            }
-        }
-    }
-
-    // MARK: - Drip Animation
-    @ViewBuilder
-    private var dripAnimationView: some View {
-        DripEdge(progress: dripProgress, dripCount: 20, screenHeight: screenSize.height)
-            .fill(Color.black)
-            .frame(width: screenSize.width, height: screenSize.height)
-            .opacity(overlayOpacity)
-    }
-
-    private func startDripAnimation(expectedDarkMode: Bool) {
-        // Reset state
-        dripProgress = 0.0
-        overlayOpacity = 1.0
-
-        // Drip down to cover screen - slower with easeIn for accelerating drip feel
-        withAnimation(.easeIn(duration: 0.4)) {
-            dripProgress = 1.0
-        }
-
-        // Fully covered - trigger toggle
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-            self.onBlackReached()
-
-            self.waitForDarkModeChange(expectedDarkMode: expectedDarkMode) {
-                // Continue dripping off bottom - easeOut so it slows as it exits
-                withAnimation(.easeOut(duration: 0.35)) {
-                    self.dripProgress = 2.0
-                }
-
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
                     withAnimation(.easeOut(duration: 0.05)) {
                         self.overlayOpacity = 0.0
                     }
