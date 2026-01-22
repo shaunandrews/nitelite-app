@@ -86,7 +86,9 @@ class OverlayAnimationWindow: NSWindow {
     }
 }
 
-struct ShutterBlade: Shape {
+/// A camera aperture blade that pivots from its outer edge anchor point.
+/// Each blade is a curved trapezoidal shape that rotates inward to close the aperture.
+struct ApertureBlade: Shape {
     let bladeIndex: Int
     let totalBlades: Int
     var progress: CGFloat // 0 = open, 1 = closed
@@ -99,19 +101,140 @@ struct ShutterBlade: Shape {
     func path(in rect: CGRect) -> Path {
         var path = Path()
         let center = CGPoint(x: rect.midX, y: rect.midY)
-        let maxRadius = sqrt(rect.width * rect.width + rect.height * rect.height)
+        let maxRadius = sqrt(rect.width * rect.width + rect.height * rect.height) / 2 * 1.3
 
+        // Each blade is positioned around the circle
         let anglePerBlade = (2 * .pi) / CGFloat(totalBlades)
-        let startAngle = CGFloat(bladeIndex) * anglePerBlade - .pi / 2
-        let endAngle = startAngle + anglePerBlade
+        let baseAngle = CGFloat(bladeIndex) * anglePerBlade - .pi / 2
 
-        // Blade rotates inward as progress increases
-        let rotationAmount = progress * anglePerBlade * 0.6
-        let adjustedStart = startAngle + rotationAmount
-        let adjustedEnd = endAngle + rotationAmount
+        // The pivot point is on the outer edge of the aperture ring
+        let pivotRadius = maxRadius * 0.95
+        let pivotAngle = baseAngle
+        let pivotPoint = CGPoint(
+            x: center.x + cos(pivotAngle) * pivotRadius,
+            y: center.y + sin(pivotAngle) * pivotRadius
+        )
 
-        path.move(to: center)
-        path.addArc(center: center, radius: maxRadius, startAngle: .radians(adjustedStart), endAngle: .radians(adjustedEnd), clockwise: false)
+        // Blade rotation: when open (progress=0), blade points outward
+        // When closed (progress=1), blade rotates to cover the center
+        let maxRotation: CGFloat = .pi * 0.42 // How much the blade rotates when closing
+        let bladeRotation = baseAngle + .pi + (progress * maxRotation)
+
+        // Blade dimensions
+        let bladeLength = maxRadius * 1.1
+        let bladeWidthBase = maxRadius * 0.55 // Width at pivot end
+        let bladeWidthTip = maxRadius * 0.25  // Width at inner end
+
+        // Calculate blade corners relative to pivot, then rotate
+        // The blade extends from the pivot toward the center
+        let tipDistance = bladeLength
+
+        // Four corners of the blade (roughly trapezoidal with curved edges)
+        // Corner 1: base left (at pivot)
+        let corner1Offset = CGPoint(
+            x: cos(bladeRotation + .pi/2) * bladeWidthBase/2,
+            y: sin(bladeRotation + .pi/2) * bladeWidthBase/2
+        )
+        let corner1 = CGPoint(x: pivotPoint.x + corner1Offset.x, y: pivotPoint.y + corner1Offset.y)
+
+        // Corner 2: base right (at pivot)
+        let corner2Offset = CGPoint(
+            x: cos(bladeRotation - .pi/2) * bladeWidthBase/2,
+            y: sin(bladeRotation - .pi/2) * bladeWidthBase/2
+        )
+        let corner2 = CGPoint(x: pivotPoint.x + corner2Offset.x, y: pivotPoint.y + corner2Offset.y)
+
+        // Tip center (extends toward center)
+        let tipCenter = CGPoint(
+            x: pivotPoint.x + cos(bladeRotation) * tipDistance,
+            y: pivotPoint.y + sin(bladeRotation) * tipDistance
+        )
+
+        // Corner 3: tip right
+        let corner3Offset = CGPoint(
+            x: cos(bladeRotation - .pi/2) * bladeWidthTip/2,
+            y: sin(bladeRotation - .pi/2) * bladeWidthTip/2
+        )
+        let corner3 = CGPoint(x: tipCenter.x + corner3Offset.x, y: tipCenter.y + corner3Offset.y)
+
+        // Corner 4: tip left
+        let corner4Offset = CGPoint(
+            x: cos(bladeRotation + .pi/2) * bladeWidthTip/2,
+            y: sin(bladeRotation + .pi/2) * bladeWidthTip/2
+        )
+        let corner4 = CGPoint(x: tipCenter.x + corner4Offset.x, y: tipCenter.y + corner4Offset.y)
+
+        // Draw the blade with slightly curved edges for realism
+        path.move(to: corner1)
+
+        // Left edge (from base to tip) - slight curve
+        let leftMid = CGPoint(
+            x: (corner1.x + corner4.x) / 2 + cos(bladeRotation + .pi/2) * bladeLength * 0.03,
+            y: (corner1.y + corner4.y) / 2 + sin(bladeRotation + .pi/2) * bladeLength * 0.03
+        )
+        path.addQuadCurve(to: corner4, control: leftMid)
+
+        // Tip edge
+        path.addLine(to: corner3)
+
+        // Right edge (from tip to base) - slight curve
+        let rightMid = CGPoint(
+            x: (corner3.x + corner2.x) / 2 + cos(bladeRotation - .pi/2) * bladeLength * 0.03,
+            y: (corner3.y + corner2.y) / 2 + sin(bladeRotation - .pi/2) * bladeLength * 0.03
+        )
+        path.addQuadCurve(to: corner2, control: rightMid)
+
+        // Base edge
+        path.addLine(to: corner1)
+        path.closeSubpath()
+
+        return path
+    }
+}
+
+/// The aperture opening shape - a shrinking polygon that represents the hole in the center
+struct ApertureOpening: Shape {
+    let bladeCount: Int
+    var progress: CGFloat // 0 = fully open, 1 = fully closed
+
+    var animatableData: CGFloat {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let center = CGPoint(x: rect.midX, y: rect.midY)
+        let maxRadius = sqrt(rect.width * rect.width + rect.height * rect.height) / 2
+
+        // The opening shrinks as progress increases
+        // At progress=0, the opening is large; at progress=1, it's nearly zero
+        let openingRadius = maxRadius * 0.85 * (1 - progress)
+
+        guard openingRadius > 1 else {
+            // When fully closed, just return empty path
+            return path
+        }
+
+        // Create a polygon with bladeCount sides, slightly rotated based on progress
+        // This creates the characteristic aperture rotation effect
+        let rotationOffset = progress * .pi / CGFloat(bladeCount) * 0.5
+
+        let anglePerVertex = (2 * .pi) / CGFloat(bladeCount)
+
+        for i in 0..<bladeCount {
+            let angle = CGFloat(i) * anglePerVertex - .pi/2 + rotationOffset
+            let point = CGPoint(
+                x: center.x + cos(angle) * openingRadius,
+                y: center.y + sin(angle) * openingRadius
+            )
+
+            if i == 0 {
+                path.move(to: point)
+            } else {
+                path.addLine(to: point)
+            }
+        }
         path.closeSubpath()
 
         return path
@@ -490,13 +613,26 @@ struct OverlayAnimationView: View {
     // MARK: - Shutter Animation
     @ViewBuilder
     private var shutterAnimationView: some View {
+        let bladeCount = 8
+
         ZStack {
-            // Each blade
-            ForEach(0..<6, id: \.self) { index in
-                ShutterBlade(bladeIndex: index, totalBlades: 6, progress: shutterProgress)
-                    .fill(Color.black)
+            // Black background (visible through the aperture opening)
+            Color.black
+                .ignoresSafeArea()
+
+            // The aperture opening (transparent hole) - uses destination out to punch through
+            ApertureOpening(bladeCount: bladeCount, progress: shutterProgress)
+                .fill(Color.white)
+                .blendMode(.destinationOut)
+
+            // Draw blade outlines/edges for visual definition
+            // This creates subtle visible blade edges around the opening
+            ForEach(0..<bladeCount, id: \.self) { index in
+                ApertureBlade(bladeIndex: index, totalBlades: bladeCount, progress: shutterProgress)
+                    .stroke(Color.black.opacity(0.3), lineWidth: 1)
             }
         }
+        .compositingGroup()
         .opacity(overlayOpacity)
     }
 
