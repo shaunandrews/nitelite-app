@@ -309,9 +309,12 @@ struct OverlayAnimationView: View {
     /// final fully-black frame is on screen before the blocking AppleScript call runs.
     private static let frameBuffer: TimeInterval = 0.03
 
-    /// Pause after the system reports the new appearance, giving other apps a
-    /// moment to repaint before the reveal starts.
-    private static let repaintSettle: TimeInterval = 0.06
+    /// Hold on black after the system reports the new appearance. Apps repaint on
+    /// their own schedule after the switch: measured with a screen recording, the
+    /// visible change lands ~70–500ms after the appearance notification (slowest on
+    /// the first toggle in a while). Revealing sooner shows the old theme, which
+    /// then flips after the transition — the exact thing this app exists to hide.
+    private static let repaintSettle: TimeInterval = 0.4
 
     private func after(_ delay: TimeInterval, _ action: @escaping () -> Void) {
         DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: action)
@@ -569,7 +572,7 @@ struct OverlayAnimationView: View {
             return isDark == expectedDarkMode
         }
 
-        // Once the switch is seen, hold briefly so other apps finish repainting
+        // Once the switch is seen, hold on black until other apps finish repainting
         let settleThenComplete = {
             self.after(Self.repaintSettle, completion)
         }
