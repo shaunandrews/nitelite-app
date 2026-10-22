@@ -259,27 +259,26 @@ struct OverlayAnimationView: View {
     
     @ViewBuilder
     private var wipeAnimationView: some View {
-        // Black overlay with gradient wipe effect
-        Color.black
-            .ignoresSafeArea()
-            .opacity(overlayOpacity)
-            .mask(
-                Rectangle()
-                    .fill(
-                        LinearGradient(
-                            gradient: Gradient(stops: [
-                                .init(color: .clear, location: 0.0),
-                                .init(color: .white, location: 0.05),
-                                .init(color: .white, location: 0.95),
-                                .init(color: .clear, location: 1.0)
-                            ]),
-                            startPoint: .leading,
-                            endPoint: .trailing
-                        )
-                    )
-                    .frame(width: screenSize.width * 2.0, height: screenSize.height)
-                    .offset(x: -screenSize.width * 1.0 + (screenSize.width * 2.0 * wipeProgress), y: 0)
-            )
+        // A black band with feathered edges slides left → right across the screen.
+        // wipeProgress 0 = band fully off-screen left, 0.5 = screen fully covered,
+        // 1 = band fully off-screen right.
+        let feather = screenSize.width * 0.1
+        let bandWidth = screenSize.width + feather * 2
+        let featherStop = feather / bandWidth
+
+        LinearGradient(
+            gradient: Gradient(stops: [
+                .init(color: .clear, location: 0),
+                .init(color: .black, location: featherStop),
+                .init(color: .black, location: 1 - featherStop),
+                .init(color: .clear, location: 1)
+            ]),
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+        .frame(width: bandWidth, height: screenSize.height)
+        .offset(x: -bandWidth + (screenSize.width + bandWidth) * wipeProgress)
+        .frame(width: screenSize.width, height: screenSize.height, alignment: .leading)
     }
     
     func startAnimation() {
@@ -301,88 +300,82 @@ struct OverlayAnimationView: View {
         }
     }
     
+    // MARK: - Timing
+
+    // Covers ease in (accelerate into black) and reveals ease out (decelerate as
+    // the new appearance settles) so every style hits black crisply and lands softly.
+
+    /// Extra wait after a cover animation's nominal duration before toggling, so the
+    /// final fully-black frame is on screen before the blocking AppleScript call runs.
+    private static let frameBuffer: TimeInterval = 0.03
+
+    /// Pause after the system reports the new appearance, giving other apps a
+    /// moment to repaint before the reveal starts.
+    private static let repaintSettle: TimeInterval = 0.06
+
+    private func after(_ delay: TimeInterval, _ action: @escaping () -> Void) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: action)
+    }
+
+    /// Waits for the cover animation to finish, toggles the appearance, waits for
+    /// the system to apply it, then runs the reveal.
+    private func toggleWhenCovered(after coverDuration: TimeInterval, expectedDarkMode: Bool, reveal: @escaping () -> Void) {
+        after(coverDuration + Self.frameBuffer) {
+            self.onBlackReached()
+            self.waitForDarkModeChange(expectedDarkMode: expectedDarkMode, completion: reveal)
+        }
+    }
+
     // MARK: - Iris Animation Methods
     private func startIrisDarkModeAnimation() {
         let maxRadius = sqrt(screenSize.width * screenSize.width + screenSize.height * screenSize.height) / 2
         irisRadius = maxRadius
         overlayOpacity = 1.0
-        
-        // Faster iris close - 0.15 seconds
-        withAnimation(.easeInOut(duration: 0.15)) {
+
+        withAnimation(.easeIn(duration: 0.18)) {
             irisRadius = 0.0
         }
-        
-        // Trigger dark mode after iris closes
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            self.onBlackReached()
-            
-            // Wait for system to switch, then quick fade out
-            self.waitForDarkModeChange(expectedDarkMode: true) {
-                withAnimation(.easeOut(duration: 0.08)) {
-                    self.overlayOpacity = 0.0
-                }
-                
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-                    self.onComplete()
-                }
+
+        toggleWhenCovered(after: 0.18, expectedDarkMode: true) {
+            withAnimation(.easeOut(duration: 0.12)) {
+                self.overlayOpacity = 0.0
             }
+            self.after(0.12) { self.onComplete() }
         }
     }
     
     private func startIrisLightModeAnimation() {
         let maxRadius = sqrt(screenSize.width * screenSize.width + screenSize.height * screenSize.height) / 2
-        
+
         // Start with everything closed
         fadeOpacity = 0.0
         irisRadius = 0.0
-        
-        // Faster fade to black
-        withAnimation(.easeOut(duration: 0.12)) {
+
+        withAnimation(.easeIn(duration: 0.12)) {
             fadeOpacity = 1.0
         }
-        
-        // Trigger light mode change when fully black
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-            self.onBlackReached()
-            
-            // Wait for system to switch, then open iris faster
-            self.waitForDarkModeChange(expectedDarkMode: false) {
-                withAnimation(.easeOut(duration: 0.15)) {
-                    self.irisRadius = maxRadius
-                }
-                
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-                    self.onComplete()
-                }
+
+        toggleWhenCovered(after: 0.12, expectedDarkMode: false) {
+            withAnimation(.easeOut(duration: 0.2)) {
+                self.irisRadius = maxRadius
             }
+            self.after(0.2) { self.onComplete() }
         }
     }
     
     // MARK: - Wipe Animation Methods
     private func startWipeAnimation(expectedDarkMode: Bool) {
-        // Start with wipe completely off-screen to the left
         wipeProgress = 0.0
-        overlayOpacity = 1.0
 
-        // Much faster wipe to full coverage
-        withAnimation(.easeInOut(duration: 0.2)) {
-            wipeProgress = 0.6  // Screen fully covered
+        withAnimation(.easeIn(duration: 0.2)) {
+            wipeProgress = 0.5  // Screen fully covered
         }
 
-        // Trigger mode change when screen is fully covered
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            self.onBlackReached()
-
-            // Wait for system appearance change, then quick completion
-            self.waitForDarkModeChange(expectedDarkMode: expectedDarkMode) {
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    self.wipeProgress = 1.1  // Complete the wipe
-                }
-
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                    self.onComplete()
-                }
+        toggleWhenCovered(after: 0.2, expectedDarkMode: expectedDarkMode) {
+            withAnimation(.easeOut(duration: 0.25)) {
+                self.wipeProgress = 1.0  // Band fully off-screen right
             }
+            self.after(0.25) { self.onComplete() }
         }
     }
 
@@ -424,7 +417,7 @@ struct OverlayAnimationView: View {
         }
 
         // Phase 2: Collapse horizontally to dot + show glow (0.08s)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+        after(0.1) {
             withAnimation(.easeIn(duration: 0.08)) {
                 self.tvScaleX = 0.0
             }
@@ -433,48 +426,33 @@ struct OverlayAnimationView: View {
             }
         }
 
-        // Phase 3: Fade dot, trigger mode change (0.05s)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
+        // Phase 3: Fade dot (0.05s)
+        after(0.18) {
             withAnimation(.easeOut(duration: 0.05)) {
                 self.tvDotOpacity = 0.0
             }
         }
 
-        // Now fully black - trigger the toggle
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.23) {
-            self.onBlackReached()
+        // Fully black - toggle, then reverse the animation
+        toggleWhenCovered(after: 0.23, expectedDarkMode: expectedDarkMode) {
+            // Show dot briefly
+            withAnimation(.easeOut(duration: 0.03)) {
+                self.tvDotOpacity = 0.8
+            }
 
-            // Wait for system, then reverse the animation
-            self.waitForDarkModeChange(expectedDarkMode: expectedDarkMode) {
-                // Show dot briefly
-                withAnimation(.easeOut(duration: 0.03)) {
-                    self.tvDotOpacity = 0.8
+            self.after(0.03) {
+                // Expand to line
+                withAnimation(.easeOut(duration: 0.06)) {
+                    self.tvScaleX = 1.0
+                    self.tvDotOpacity = 0.0
                 }
 
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.03) {
-                    // Expand to line
-                    withAnimation(.easeOut(duration: 0.06)) {
-                        self.tvScaleX = 1.0
-                        self.tvDotOpacity = 0.0
+                self.after(0.06) {
+                    // Expand to full — the overlay is fully clear once this finishes
+                    withAnimation(.easeOut(duration: 0.1)) {
+                        self.tvScaleY = 1.0
                     }
-
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.06) {
-                        // Expand to full
-                        withAnimation(.easeOut(duration: 0.08)) {
-                            self.tvScaleY = 1.0
-                        }
-
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.08) {
-                            // Fade out overlay
-                            withAnimation(.easeOut(duration: 0.05)) {
-                                self.overlayOpacity = 0.0
-                            }
-
-                            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                                self.onComplete()
-                            }
-                        }
-                    }
+                    self.after(0.1) { self.onComplete() }
                 }
             }
         }
@@ -489,8 +467,11 @@ struct OverlayAnimationView: View {
         ZStack {
             ForEach(0..<blindCount, id: \.self) { index in
                 let isFromLeft = index % 2 == 0
-                let staggerDelay = CGFloat(index) * 0.02
-                let adjustedProgress = max(0, min(1, (blindsProgress - staggerDelay) / (1 - staggerDelay * CGFloat(blindCount - 1) / CGFloat(blindCount))))
+                // Each slat starts 0.02 later; every slat travels over the same span
+                // and the last one lands exactly at blindsProgress == 1.
+                let stagger: CGFloat = 0.02
+                let travel = 1 - stagger * CGFloat(blindCount - 1)
+                let adjustedProgress = max(0, min(1, (blindsProgress - CGFloat(index) * stagger) / travel))
 
                 Rectangle()
                     .fill(Color.black)
@@ -504,39 +485,22 @@ struct OverlayAnimationView: View {
             }
         }
         .frame(width: screenSize.width, height: screenSize.height)
-        .opacity(overlayOpacity)
     }
 
     private func startBlindsAnimation(expectedDarkMode: Bool) {
-        // Reset state
         blindsProgress = 0.0
-        overlayOpacity = 1.0
 
         // Close blinds
-        withAnimation(.easeInOut(duration: 0.25)) {
+        withAnimation(.easeIn(duration: 0.25)) {
             blindsProgress = 1.0
         }
 
-        // Fully closed - trigger toggle
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-            self.onBlackReached()
-
-            self.waitForDarkModeChange(expectedDarkMode: expectedDarkMode) {
-                // Open blinds (reverse direction)
-                withAnimation(.easeInOut(duration: 0.25)) {
-                    self.blindsProgress = 0.0
-                }
-
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
-                    withAnimation(.easeOut(duration: 0.05)) {
-                        self.overlayOpacity = 0.0
-                    }
-
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                        self.onComplete()
-                    }
-                }
+        toggleWhenCovered(after: 0.25, expectedDarkMode: expectedDarkMode) {
+            // Open blinds — slats are fully off-screen at 0, so no fade needed
+            withAnimation(.easeOut(duration: 0.28)) {
+                self.blindsProgress = 0.0
             }
+            self.after(0.28) { self.onComplete() }
         }
     }
 
@@ -565,14 +529,11 @@ struct OverlayAnimationView: View {
             .fill(Color.black)
         }
         .frame(width: screenSize.width, height: screenSize.height)
-        .opacity(overlayOpacity)
     }
 
     private func startCurtainAnimation(expectedDarkMode: Bool) {
-        // Reset state
         curtainProgress = 0.0
         curtainWavePhase = 0.0
-        overlayOpacity = 1.0
 
         // Close curtains with spring animation - slow and dramatic
         withAnimation(.spring(response: 0.7, dampingFraction: 0.75, blendDuration: 0)) {
@@ -584,31 +545,21 @@ struct OverlayAnimationView: View {
             curtainWavePhase = .pi * 2 // One full ripple cycle
         }
 
-        // Fully closed - trigger toggle (timing accounts for spring settle)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) {
-            self.onBlackReached()
-
-            self.waitForDarkModeChange(expectedDarkMode: expectedDarkMode) {
-                // Open curtains with spring for dramatic reveal
-                withAnimation(.spring(response: 0.6, dampingFraction: 0.7, blendDuration: 0)) {
-                    self.curtainProgress = 0.0
-                }
-
-                // Continue wave animation during open
-                withAnimation(.easeIn(duration: 0.7)) {
-                    self.curtainWavePhase = .pi * 4 // Another cycle of ripples
-                }
-
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                    withAnimation(.easeOut(duration: 0.05)) {
-                        self.overlayOpacity = 0.0
-                    }
-
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                        self.onComplete()
-                    }
-                }
+        // This spring first reaches the center at ~0.41s and stays closed through
+        // its small overshoot, so the toggle can fire then instead of waiting it out.
+        toggleWhenCovered(after: 0.42, expectedDarkMode: expectedDarkMode) {
+            // Open curtains with spring for dramatic reveal
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.7, blendDuration: 0)) {
+                self.curtainProgress = 0.0
             }
+
+            // Continue wave animation during open
+            withAnimation(.easeIn(duration: 0.7)) {
+                self.curtainWavePhase = .pi * 4 // Another cycle of ripples
+            }
+
+            // Curtains are off-screen by now, so no fade needed
+            self.after(0.6) { self.onComplete() }
         }
     }
 
@@ -618,19 +569,26 @@ struct OverlayAnimationView: View {
             return isDark == expectedDarkMode
         }
 
-        // If already in expected mode, complete immediately
+        // Once the switch is seen, hold briefly so other apps finish repainting
+        let settleThenComplete = {
+            self.after(Self.repaintSettle, completion)
+        }
+
         if checkAppearance() {
-            completion()
+            settleThenComplete()
             return
         }
 
-        // Fast polling with shorter timeout - system typically responds in ~50-100ms
+        // Fast polling with short timeout - system typically responds in ~50-100ms
         var attempts = 0
-        let maxAttempts = 15 // 240ms timeout at 16ms intervals (was 640ms)
+        let maxAttempts = 15 // 240ms timeout at 16ms intervals
 
         Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { timer in
             attempts += 1
-            if checkAppearance() || attempts >= maxAttempts {
+            if checkAppearance() {
+                timer.invalidate()
+                settleThenComplete()
+            } else if attempts >= maxAttempts {
                 timer.invalidate()
                 completion()
             }
