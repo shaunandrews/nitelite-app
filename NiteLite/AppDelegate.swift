@@ -38,13 +38,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         """
         
         var error: NSDictionary?
-        if let scriptObject = NSAppleScript(source: testScript) {
-            scriptObject.executeAndReturnError(&error)
-            if let error = error {
-                print("Permission request failed: \(error)")
-            } else {
-                print("Automation permissions granted or already available")
-            }
+        NSAppleScript(source: testScript)?.executeAndReturnError(&error)
+        if let error = error {
+            print("Automation permission request failed: \(error)")
         }
     }
     
@@ -76,25 +72,15 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     private func performDarkModeToggle() {
         // Debounce: prevent rapid toggles while animation is in progress
-        guard !isToggling else {
-            print("Toggle already in progress, ignoring")
-            return
-        }
+        guard !isToggling else { return }
         isToggling = true
 
-        print("Status bar button clicked")
-
-        // Get current state before toggle
-        let wasInDarkMode = darkModeManager.isDarkModeEnabled()
-        print("Current mode: \(wasInDarkMode ? "Dark" : "Light")")
-
-        // Determine what mode we're switching TO
-        let switchingToDarkMode = !wasInDarkMode
+        let switchingToDarkMode = !darkModeManager.isDarkModeEnabled()
 
         // Start the animation immediately, toggle dark mode when black is reached, then fade out
         animationManager.showTransitionAnimation(isDarkMode: switchingToDarkMode, onBlackReached: { [weak self] in
             // Screen is now fully black - toggle dark mode
-            self?.performDarkModeToggleInternal(wasInDarkMode: wasInDarkMode)
+            self?.darkModeManager.toggleDarkMode()
         }) { [weak self] in
             // Animation and fade completed - update icon and reset debounce
             self?.updateStatusBarIcon()
@@ -155,27 +141,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc private func changeAnimationType(_ sender: NSMenuItem) {
         guard let animationType = sender.representedObject as? AnimationType else { return }
         AnimationPreferences.shared.animationType = animationType
-        print("Animation type changed to: \(animationType.displayName)")
     }
     
     @objc private func quitApplication() {
         NSApplication.shared.terminate(nil)
-    }
-    
-    private func performDarkModeToggleInternal(wasInDarkMode: Bool) {
-        // Toggle dark mode
-        darkModeManager.toggleDarkMode()
-        
-        // Remove the verification delay - let the animation handle waiting
-        // The animation will monitor for the actual appearance change
-        let isNowInDarkMode = self.darkModeManager.isDarkModeEnabled()
-        print("Mode after toggle: \(isNowInDarkMode ? "Dark" : "Light")")
-        
-        if wasInDarkMode != isNowInDarkMode {
-            print("Toggle successful!")
-        } else {
-            print("Toggle initiated - animation will wait for system response")
-        }
     }
     
     private func updateStatusBarIcon() {
@@ -193,8 +162,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         // Set tooltip
         statusButton.toolTip = isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"
-        
-        print("Updated icon for \(isDarkMode ? "Dark" : "Light") mode")
     }
     
     private func setupAppearanceObserver() {
@@ -221,9 +188,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         if status == noErr {
             self.hotKeyRef = eventHotKey
-            print("Global keyboard shortcut registered: ⌘⇧D")
         } else {
-            print("Failed to register global keyboard shortcut")
+            print("Failed to register global keyboard shortcut (status \(status))")
         }
         
         var eventSpec = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: OSType(kEventHotKeyPressed))
@@ -235,8 +201,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     private func handleHotKeyPressed() {
-        print("Keyboard shortcut triggered: ⌘⇧D")
-        statusBarButtonClicked()
+        // Toggle directly — statusBarButtonClicked() inspects NSApp.currentEvent,
+        // which isn't a mouse event when the hotkey fires.
+        performDarkModeToggle()
     }
     
     deinit {

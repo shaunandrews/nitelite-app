@@ -7,81 +7,70 @@ It lives in your menu bar with a subtle icon indicating your current mode, makin
 
 ## Features
 - **Minimal**: Lives only in your menubar, no main window or dock icon
-- **Smart Icons**: Shows a moon in Dark Mode, sun in Light Mode  
-- **One-Click Toggle**: Simply click the menubar icon to switch modes
-- **Multiple Transition Styles**: Choose between Classic Film Iris or Left-Right Wipe animations
-- **Classic Film Iris Transition**: Beautiful iris opening/closing animation during mode switches
-- **Left-Right Wipe Transition**: Smooth left-to-right fade-wipe through black for a cinematic effect
+- **Smart Icons**: Shows a moon in Dark Mode, sun in Light Mode
+- **One-Click Toggle**: Click the menubar icon or press ⌘⇧D anywhere
+- **Five Transition Styles** (right-click the icon to choose):
+  - Classic Film Iris
+  - Left-Right Wipe
+  - Old TV Turn-off
+  - Venetian Blinds
+  - Curtain Call
 - **Native**: Built with Swift and SwiftUI for macOS
 
-## Tech stack
-Built using Swift and SwiftUI.
-
-## Building & Running
+## Building & Installing
 
 ### Prerequisites
 - macOS 13.0 or later
 - Xcode 15.0 or later
 
-### Quick Start
-1. Clone this repository
-2. Open `NiteLite.xcodeproj` in Xcode
-3. Build and run (⌘+R)
-
-Or use the build script:
+### Install to /Applications
 ```bash
-./build.sh
+./build.sh install
+```
+Builds a Release copy, quits any running NiteLite, installs it to `/Applications/NiteLite.app`, and launches it.
+
+### Other commands
+| Command | What it does |
+| --- | --- |
+| `./build.sh` | Debug build and launch (for development) |
+| `./build.sh release` | Release build to `dist/NiteLite.app` (universal: Apple silicon + Intel) |
+| `./build.sh clean` | Delete `build/` and `dist/` |
+
+### Code signing
+Builds are ad-hoc signed by default, so macOS asks for Automation permission again after every reinstall. To keep that permission across rebuilds, sign with a stable identity from your keychain:
+
+```bash
+NITELITE_SIGN_IDENTITY="Your Cert Name" ./build.sh install
 ```
 
-### Manual Build
-```bash
-xcodebuild -project NiteLite.xcodeproj -scheme NiteLite -configuration Debug -derivedDataPath build build
-open build/Build/Products/Debug/NiteLite.app
-```
+List available identities with `security find-identity -v -p codesigning`.
+
+### Launch at login
+System Settings → General → Login Items → add NiteLite.
 
 ## Permissions
-On first run, macOS will ask for permission to control your system preferences. This is required for NiteLite to toggle Dark Mode.
+On first run, macOS asks for permission to control System Events. This is required for NiteLite to toggle Dark Mode.
 
 ### Troubleshooting
 If the toggle doesn't work:
 
-1. **Grant Automation Permissions**: Go to System Preferences → Security & Privacy → Privacy → Automation, and ensure NiteLite has permission to control "System Events"
-
-2. **Manual Permission Setup**: You can also manually grant permissions by running this in Terminal:
+1. **Check Automation permission**: System Settings → Privacy & Security → Automation → make sure NiteLite can control "System Events".
+2. **Reset a stale permission** (e.g. after reinstalling an ad-hoc signed build):
    ```bash
-   sudo sqlite3 /Library/Application\ Support/com.apple.TCC/TCC.db "INSERT OR REPLACE INTO access VALUES('kTCCServiceAppleEvents','com.yourname.nitelite',0,2,2,1,NULL,NULL,0,'UNUSED',NULL,0,1541440109);"
+   tccutil reset AppleEvents com.shaunandrews.nitelite
    ```
-
-3. **Try Different Methods**: NiteLite uses multiple fallback methods:
-   - Shell command to modify UserDefaults directly  
-   - AppleScript via NSAppleScript
-   - Command line osascript
-
-4. **Check Console**: Look for error messages in Console.app that might indicate permission issues
+   Then relaunch NiteLite and approve the prompt.
+3. **Check Console.app** for NiteLite error messages.
 
 ## How it Works
-NiteLite uses multiple methods to reliably toggle Dark Mode with beautiful classic film-style transitions:
+When you toggle, NiteLite covers every display with a full-screen overlay, plays the transition until the screen is fully black, flips the system appearance, waits for macOS to confirm the change, then plays the reveal.
 
-**Visual Transitions**: When switching modes, choose from two cinematic animation styles:
-- **Classic Film Iris**: Traditional iris opening/closing animation
-  - **To Dark Mode**: Iris closes (circular hole shrinks to black)
-  - **To Light Mode**: Iris opens (circular hole expands from black)
-- **Left-Right Wipe**: Smooth fade-wipe transition through black
-  - **To Dark Mode**: Screen wipes from left to right to black
-  - **To Light Mode**: Fade to black, then wipe from left to right revealing content
-- **Timing**: 0.3-0.4 second animations with optimized dark mode toggle coordination
-- **Context Menu**: Right-click the menubar icon to choose your preferred animation style
+**Dark Mode toggle methods** (tried in order):
+1. **AppleScript** via `NSAppleScript` and System Events
+2. **`osascript`** command-line fallback
+3. **`defaults write -g AppleInterfaceStyle`** as a last resort
 
-**Dark Mode Toggle Methods**:
-1. **AppleScript Integration**: Primary method using System Events to control appearance preferences
-2. **Command Line osascript**: Fallback using the osascript command-line tool  
-3. **Direct UserDefaults**: Last resort method modifying system preferences directly
-
-**Permission Handling**: The app requests automation permissions automatically on first launch, eliminating the need to wait for user interaction. All methods include verification to ensure the toggle actually worked.
-
-**Smart Icon Updates**: The menubar icon automatically reflects the current system appearance and updates when Dark Mode is toggled from other sources (System Preferences, Control Center, etc.)
-
-**Animation Preferences**: Your preferred animation style is saved automatically and persists between app launches.
+The menubar icon also updates when Dark Mode is changed elsewhere (System Settings, Control Center, etc.), and your animation choice persists between launches.
 
 ## Demo & Marketing
 
@@ -93,14 +82,14 @@ The marketing materials demonstrate the smooth animation and instant dark mode s
 
 ## Project Structure
 ```
+build.sh                         # Build / install script
 NiteLite/
 ├── NiteLiteApp.swift            # Main app entry point
-├── AppDelegate.swift            # Menubar setup and event handling  
+├── AppDelegate.swift            # Menubar setup, hotkey, and event handling
 ├── DarkModeManager.swift        # Dark mode toggle logic
-├── OverlayAnimationWindow.swift # Classic film iris transition animation
-├── Info.plist                  # App metadata
-├── NiteLite.entitlements       # Required permissions
-└── marketing/                  # Demo page and marketing assets
-    ├── index.html              # Interactive demo page
-    └── [demo videos]           # Recorded demo materials (mov/gif)
+├── OverlayAnimationWindow.swift # Transition animations (all styles)
+├── Info.plist                   # App metadata
+└── NiteLite.entitlements        # Required permissions
+docs/                            # Architecture notes
+marketing/                       # Demo page
 ```

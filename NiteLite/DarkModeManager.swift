@@ -40,31 +40,17 @@ class DarkModeManager {
     
     /// Toggle the system Dark Mode setting
     func toggleDarkMode() {
-        let currentMode = isDarkModeEnabled()
-        let newMode = currentMode ? "Light" : "Dark"
-        
-        print("Attempting to switch from \(currentMode ? "Dark" : "Light") to \(newMode) mode")
-        
+        let toDarkMode = !isDarkModeEnabled()
+
         // Try methods in order of reliability
-        if toggleUsingAppleScript(!currentMode) {
-            print("Successfully switched using AppleScript")
-            return
-        }
-        
-        if toggleUsingOsascript(!currentMode) {
-            print("Successfully switched using osascript")
-            return
-        }
-        
-        if toggleUsingShellCommand(!currentMode) {
-            print("Successfully switched using shell command")
-            return
-        }
-        
-        print("All toggle methods failed")
+        if toggleUsingAppleScript(toDarkMode) { return }
+        if toggleUsingOsascript(toDarkMode) { return }
+        if toggleUsingShellCommand(toDarkMode) { return }
+
+        print("All dark mode toggle methods failed")
     }
     
-    /// Method 1: Use shell command to modify UserDefaults directly
+    /// Method 3: Use shell command to modify UserDefaults directly
     private func toggleUsingShellCommand(_ toDarkMode: Bool) -> Bool {
         let task = Process()
         task.launchPath = "/usr/bin/defaults"
@@ -99,7 +85,7 @@ class DarkModeManager {
         }
     }
     
-    /// Method 2: Use cached AppleScript for fast execution
+    /// Method 1: Use cached AppleScript for fast execution
     private func toggleUsingAppleScript(_ toDarkMode: Bool) -> Bool {
         // Use pre-compiled cached script for faster execution
         guard let script = toDarkMode ? darkModeOnScript : darkModeOffScript else {
@@ -108,21 +94,17 @@ class DarkModeManager {
         }
 
         var error: NSDictionary?
-        let result = script.executeAndReturnError(&error)
+        script.executeAndReturnError(&error)
 
         if let error = error {
-            print("AppleScript error: \(error)")
-            if let errorMessage = error["NSAppleScriptErrorMessage"] as? String {
-                print("Error description: \(errorMessage)")
-            }
+            print("AppleScript error: \(error[NSAppleScript.errorMessage] ?? error)")
             return false
         }
 
-        print("AppleScript executed successfully: \(result)")
         return true
     }
     
-    /// Method 3: Use osascript command line tool
+    /// Method 2: Use osascript command line tool
     private func toggleUsingOsascript(_ toDarkMode: Bool) -> Bool {
         let script = "tell app \"System Events\" to tell appearance preferences to set dark mode to \(toDarkMode)"
 

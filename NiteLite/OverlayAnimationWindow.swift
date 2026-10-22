@@ -122,16 +122,9 @@ struct CurtainShape: Shape {
         // The trailing edge (attached to the "curtain rod")
         let trailingEdgeX = isLeftCurtain ? leadingEdgeX - curtainWidth : leadingEdgeX + curtainWidth
 
-        // Start from top corner (trailing edge side)
-        if isLeftCurtain {
-            path.move(to: CGPoint(x: trailingEdgeX, y: 0))
-            // Top edge to leading edge
-            path.addLine(to: CGPoint(x: leadingEdgeX, y: 0))
-        } else {
-            path.move(to: CGPoint(x: trailingEdgeX, y: 0))
-            // Top edge to leading edge
-            path.addLine(to: CGPoint(x: leadingEdgeX, y: 0))
-        }
+        // Start from top corner (trailing edge side), then top edge to leading edge
+        path.move(to: CGPoint(x: trailingEdgeX, y: 0))
+        path.addLine(to: CGPoint(x: leadingEdgeX, y: 0))
 
         // Create wavy leading edge going down
         // The waves simulate hanging fabric folds
@@ -164,11 +157,7 @@ struct CurtainShape: Shape {
         }
 
         // Bottom edge back to trailing side
-        if isLeftCurtain {
-            path.addLine(to: CGPoint(x: trailingEdgeX, y: screenHeight))
-        } else {
-            path.addLine(to: CGPoint(x: trailingEdgeX, y: screenHeight))
-        }
+        path.addLine(to: CGPoint(x: trailingEdgeX, y: screenHeight))
 
         // Close the path (trailing edge going up)
         path.closeSubpath()

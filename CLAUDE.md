@@ -9,12 +9,13 @@ NiteLite is a macOS menubar application that toggles system Dark Mode with cinem
 ## Development Commands
 
 ```bash
-# Build and run (preferred)
-./build.sh
+./build.sh            # Debug build + launch (development)
+./build.sh release    # Release build → dist/NiteLite.app
+./build.sh install    # Release build → /Applications/NiteLite.app, then launch
+./build.sh clean      # Remove build/ and dist/
 
-# Manual build
-xcodebuild -project NiteLite.xcodeproj -scheme NiteLite -configuration Debug -derivedDataPath build build
-open build/Build/Products/Debug/NiteLite.app
+# Optional: sign with a stable keychain identity so Automation permission survives reinstalls
+NITELITE_SIGN_IDENTITY="Cert Name" ./build.sh install
 
 # Open in Xcode
 open NiteLite.xcodeproj
@@ -37,11 +38,14 @@ Each method includes verification polling to confirm the toggle succeeded:
 
 ### Animation System
 
-Two animation styles selectable via right-click context menu (stored in `AnimationPreferences`):
+Five animation styles selectable via right-click context menu (`AnimationType`, stored in `AnimationPreferences`):
 - **Classic Film Iris** - Circle shrinks/expands from center using `blendMode(.destinationOut)` with `compositingGroup()`
 - **Left-Right Wipe** - Gradient mask wipe across screen
+- **Old TV Turn-off** - Screen squeezes to a line, then a glowing dot
+- **Venetian Blinds** - Staggered horizontal slats slide in from alternating sides
+- **Curtain Call** - Two `CurtainShape` curtains with wavy, spring-animated edges
 
-Animation timing: ~0.15-0.25 second transitions. The dark mode toggle fires at `onBlackReached` callback (when screen is fully black), then animation reveals the new appearance.
+Animation timing: ~0.15-0.25 second transitions (Curtain Call is slower, ~0.7s). The dark mode toggle fires at `onBlackReached` callback (when screen is fully black), then animation reveals the new appearance.
 
 ### Key Implementation Details
 
