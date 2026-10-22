@@ -5,6 +5,7 @@
 #   ./build.sh            Debug build, then launch it (for development)
 #   ./build.sh release    Release build → dist/NiteLite.app
 #   ./build.sh install    Release build, then install to /Applications and launch
+#   ./build.sh package    Release build → dist/NiteLite.zip, copied into site/ for download
 #   ./build.sh clean      Remove build/ and dist/
 #
 # Signing: builds are ad-hoc signed by default, which means macOS asks for
@@ -78,6 +79,13 @@ case "${1:-run}" in
     release)
         release
         ;;
+    package)
+        release
+        ditto -c -k --keepParent "$DIST_DIR/$APP_NAME.app" "$DIST_DIR/$APP_NAME.zip"
+        cp "$DIST_DIR/$APP_NAME.zip" "site/$APP_NAME.zip"
+        echo "Packaged: $DIST_DIR/$APP_NAME.zip (copied to site/)"
+        echo "Publish the site with: sf publish site"
+        ;;
     install)
         release
         quit_running_app
@@ -91,7 +99,7 @@ case "${1:-run}" in
         echo "Cleaned."
         ;;
     *)
-        echo "Usage: ./build.sh [run|release|install|clean]"
+        echo "Usage: ./build.sh [run|release|install|package|clean]"
         exit 1
         ;;
 esac
