@@ -10,15 +10,11 @@
 
 ```swift
 enum AnimationType: String, CaseIterable {
-    case iris = "iris"    // Classic film iris circle effect
-    case wipe = "wipe"    // Left-to-right wipe effect
-
-    var displayName: String {
-        switch self {
-        case .iris: return "Classic Film Iris"
-        case .wipe: return "Left-Right Wipe"
-        }
-    }
+    case iris      // "Classic Film Iris"
+    case wipe      // "Left-Right Wipe"
+    case tv        // "Old TV Turn-off"
+    case blinds    // "Venetian Blinds"
+    case curtain   // "Curtain Call"
 }
 ```
 
@@ -84,147 +80,80 @@ Coordinates multi-monitor support by creating overlay windows for each screen.
                                  │
                                  ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│ Animation Phase 1: Transition TO black                           │
-│   - Iris: Circle shrinks to center                               │
-│   - Wipe: Black bar sweeps left to right                         │
-│   Duration: 0.12 - 0.2 seconds                                   │
+│ Cover: animate TO black (ease-in, 0.12–0.42s by style)           │
+└────────────────────────────────┬─────────────────────────────────┘
+                                 │  toggleWhenCovered(after:)
+                                 │  waits cover duration + frameBuffer (30ms)
+                                 ▼
+┌──────────────────────────────────────────────────────────────────┐
+│ onBlackReached() → DarkModeManager.toggleDarkMode()              │
+│   (synchronous AppleScript, ~30–200ms, screen is black)          │
 └────────────────────────────────┬─────────────────────────────────┘
                                  │
                                  ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│ onBlackReached() callback fires                                  │
-│   → DarkModeManager.toggleDarkMode() executes                    │
+│ waitForDarkModeChange()                                          │
+│   - Poll NSApp.effectiveAppearance every 16ms (240ms timeout)    │
+│   - Once seen: hold on black for repaintSettle (400ms)           │
 └────────────────────────────────┬─────────────────────────────────┘
                                  │
                                  ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│ waitForDarkModeChange() polling                                  │
-│   - Check NSApp.effectiveAppearance every 16ms                   │
-│   - Timeout: 15 attempts (240ms)                                 │
+│ Reveal: animate FROM black (ease-out)                            │
 └────────────────────────────────┬─────────────────────────────────┘
                                  │
                                  ▼
 ┌──────────────────────────────────────────────────────────────────┐
-│ Animation Phase 2: Reveal FROM black                             │
-│   - Iris: Circle expands from center                             │
-│   - Wipe: Black bar continues off-screen                         │
-│   Duration: 0.08 - 0.25 seconds                                  │
-└────────────────────────────────┬─────────────────────────────────┘
-                                 │
-                                 ▼
-┌──────────────────────────────────────────────────────────────────┐
-│ completion() callback fires                                      │
-│   → Icon updated, overlays cleaned up                            │
+│ completion() → icon updated, overlays cleaned up                 │
 └──────────────────────────────────────────────────────────────────┘
 ```
 
-## Iris Animation Details
+## Timing rules
 
-### Dark Mode (Switching TO Dark)
+Every style follows the same shape, enforced by `toggleWhenCovered(after:expectedDarkMode:reveal:)`:
 
-```swift
-private func startIrisDarkModeAnimation() {
-    let maxRadius = sqrt(width² + height²) / 2  // Corner-to-corner
-    irisRadius = maxRadius
-    overlayOpacity = 1.0
+1. **Covers ease in, reveals ease out.** The cover accelerates into black so the switch is hidden crisply; the reveal decelerates as the new appearance settles.
+2. **Toggle one frame late.** `frameBuffer` (30ms) is added to each cover duration so the fully-black frame is on screen before the blocking AppleScript call stalls the main thread.
+3. **Hold on black until apps repaint.** This is the important one. See below.
+4. **Don't fade an overlay that's already clear.** TV, Blinds and Curtain end with nothing on screen, so they call `onComplete()` directly.
 
-    // Phase 1: Close iris (0.15s)
-    withAnimation(.easeInOut(duration: 0.15)) {
-        irisRadius = 0.0
-    }
+### Why the 400ms hold exists
 
-    // After 0.15s: trigger toggle
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-        self.onBlackReached()
+macOS reports the new appearance (the `AppleInterfaceThemeChangedNotification`, and our own `NSApp.effectiveAppearance`) long before other apps have actually redrawn. Measured with a screen recording on macOS 27:
 
-        // Wait for system response
-        self.waitForDarkModeChange(expectedDarkMode: true) {
-            // Phase 2: Fade out black (0.08s)
-            withAnimation(.easeOut(duration: 0.08)) {
-                self.overlayOpacity = 0.0
-            }
-        }
-    }
-}
+| Event | Time after the toggle call |
+|-------|----------------------------|
+| AppleScript returns | 26–207ms |
+| Appearance notification | 30–293ms |
+| Screen visibly changes | 159–735ms (slowest on the first toggle after a while) |
+
+The visible change lands **70–500ms after the notification**. Revealing as soon as the notification arrived showed the old theme, which then flipped after the transition finished. `repaintSettle` holds on black for 400ms after the change is detected. If a future macOS repaints faster, lower it; the measurement script below tells you by how much.
+
+There is no API that reports "all apps finished repainting". The only exact signal is watching the screen itself, which would need Screen Recording permission (and shows the purple recording indicator on every toggle), so the app uses the fixed hold instead.
+
+### Measuring it yourself
+
+`scripts/measure-toggle.swift` presses ⌘⇧D and records the screen's average brightness frame by frame with ScreenCaptureKit, so you can see exactly when the overlay covers, when the theme flips, and whether the old theme leaks through the reveal:
+
+```bash
+swiftc -o /tmp/measure-toggle scripts/measure-toggle.swift
+/tmp/measure-toggle 4    # toggles 4 times; an even number ends where you started
 ```
 
-**Visual Effect**: Black background with white circle cutout that shrinks.
+It needs Screen Recording and Accessibility permission for your terminal app. Each line is `ms:brightness`. A good run goes old value → `0.00` (black) → straight to the new value. A bad run climbs back toward the old value during the reveal, then jumps.
 
-Uses `blendMode(.destinationOut)` with `compositingGroup()` for proper masking.
+## Styles
 
-### Light Mode (Switching TO Light)
+| Style | Cover | Toggle fires | Reveal | Notes |
+|-------|-------|--------------|--------|-------|
+| Iris (to dark) | radius → 0, easeIn 0.18s | 0.21s | overlay fade, easeOut 0.12s | `blendMode(.destinationOut)` circle in a `compositingGroup()` |
+| Iris (to light) | fade to black, easeIn 0.12s | 0.15s | radius → max, easeOut 0.2s | Hole punched in a mask |
+| Wipe | band 0 → 0.5, easeIn 0.2s | 0.23s | band 0.5 → 1, easeOut 0.25s | Feathered band; 0 = off-screen left, 0.5 = covering, 1 = off-screen right |
+| Old TV | squeeze Y (0.1s), then X (0.08s), dot glow | 0.26s | dot, expand X (0.06s), expand Y (0.1s) | |
+| Blinds | 14 slats, 0.02 stagger, easeIn 0.25s | 0.28s | easeOut 0.28s | Every slat lands exactly at progress 1 |
+| Curtain | spring (response 0.7, damping 0.75) | 0.45s | spring (0.6, 0.7) over 0.6s | Spring first reaches center at ~0.41s and stays closed through its overshoot |
 
-```swift
-private func startIrisLightModeAnimation() {
-    fadeOpacity = 0.0  // Start transparent
-    irisRadius = 0.0
-
-    // Phase 1: Fade to black (0.12s)
-    withAnimation(.easeOut(duration: 0.12)) {
-        fadeOpacity = 1.0
-    }
-
-    // After 0.12s: trigger toggle
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-        self.onBlackReached()
-
-        // Wait for system response
-        self.waitForDarkModeChange(expectedDarkMode: false) {
-            // Phase 2: Open iris (0.15s)
-            withAnimation(.easeOut(duration: 0.15)) {
-                self.irisRadius = maxRadius
-            }
-        }
-    }
-}
-```
-
-**Visual Effect**: Fade to black, then iris opens to reveal light mode.
-
-## Wipe Animation Details
-
-### Both Directions
-
-```swift
-private func startWipeAnimation(expectedDarkMode: Bool) {
-    wipeProgress = 0.0
-    overlayOpacity = 1.0
-
-    // Phase 1: Wipe to full coverage (0.2s)
-    withAnimation(.easeInOut(duration: 0.2)) {
-        wipeProgress = 0.6  // 60% covers screen
-    }
-
-    // After 0.2s: trigger toggle
-    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-        self.onBlackReached()
-
-        // Wait for system response
-        self.waitForDarkModeChange(expectedDarkMode: expectedDarkMode) {
-            // Phase 2: Complete wipe (0.25s)
-            withAnimation(.easeInOut(duration: 0.25)) {
-                self.wipeProgress = 1.1  // Off-screen
-            }
-        }
-    }
-}
-```
-
-**Visual Effect**: Gradient-edged black bar sweeps across screen.
-
-```swift
-// Gradient mask creates soft edges
-LinearGradient(
-    gradient: Gradient(stops: [
-        .init(color: .clear, location: 0.0),
-        .init(color: .white, location: 0.05),  // 5% soft edge
-        .init(color: .white, location: 0.95),
-        .init(color: .clear, location: 1.0)   // 5% soft edge
-    ]),
-    startPoint: .leading,
-    endPoint: .trailing
-)
-```
+Add the toggle time, the AppleScript call, and the 400ms hold, then the reveal: a full toggle takes about a second.
 
 ## Appearance Change Polling
 
@@ -235,24 +164,14 @@ private func waitForDarkModeChange(expectedDarkMode: Bool, completion: @escaping
         return isDark == expectedDarkMode
     }
 
-    // Immediate check
-    if checkAppearance() {
-        completion()
-        return
-    }
+    // Once the switch is seen, hold on black until other apps finish repainting
+    let settleThenComplete = { self.after(Self.repaintSettle, completion) }
 
-    // Poll every 16ms (60fps), max 15 attempts (240ms timeout)
-    // System typically responds in ~50-100ms
-    var attempts = 0
-    let maxAttempts = 15
+    if checkAppearance() { settleThenComplete(); return }
 
-    Timer.scheduledTimer(withTimeInterval: 0.016, repeats: true) { timer in
-        attempts += 1
-        if checkAppearance() || attempts >= maxAttempts {
-            timer.invalidate()
-            completion()
-        }
-    }
+    // Poll every 16ms, 240ms timeout. On timeout (e.g. permission denied, so
+    // nothing changed) reveal immediately.
+    ...
 }
 ```
 
@@ -285,19 +204,3 @@ func showTransitionAnimation(...) {
     }
 }
 ```
-
-## Animation Timings
-
-| Animation | Phase | Duration | Cumulative |
-|-----------|-------|----------|------------|
-| **Iris Dark** | Close | 0.15s | 0.15s |
-| | Toggle + Wait | 0-0.24s | 0.15-0.39s |
-| | Fade out | 0.08s | 0.23-0.47s |
-| **Iris Light** | Fade in | 0.12s | 0.12s |
-| | Toggle + Wait | 0-0.24s | 0.12-0.36s |
-| | Open | 0.15s | 0.27-0.51s |
-| **Wipe** | Cover | 0.2s | 0.2s |
-| | Toggle + Wait | 0-0.24s | 0.2-0.44s |
-| | Complete | 0.25s | 0.45-0.69s |
-
-**Note**: The system typically responds in ~50-100ms, so real-world timings are usually at the lower end of these ranges.

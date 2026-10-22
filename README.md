@@ -34,6 +34,7 @@ Builds a Release copy, quits any running NiteLite, installs it to `/Applications
 | --- | --- |
 | `./build.sh` | Debug build and launch (for development) |
 | `./build.sh release` | Release build to `dist/NiteLite.app` (universal: Apple silicon + Intel) |
+| `./build.sh package` | Release build zipped to `dist/NiteLite.zip`, copied into `site/` for the download page |
 | `./build.sh clean` | Delete `build/` and `dist/` |
 
 ### Code signing
@@ -47,6 +48,38 @@ List available identities with `security find-identity -v -p codesigning`.
 
 ### Launch at login
 System Settings → General → Login Items → add NiteLite.
+
+## Website
+
+The download page lives in `site/` and is published at **https://nitelite.space.fast** (Spacefast, in Shaun's Team, public). It's plain HTML with no build step. The page replays all five transitions in the browser on a `<canvas>` overlay, ported from the Swift shapes and timing, so keep the two in sync when either changes.
+
+### Publish an update
+```bash
+./build.sh package    # rebuilds NiteLite.zip into site/
+sf publish site       # publishes a new version to the same space
+```
+
+- `site/.spacefast/space.json` links the folder to the space; `state.json` next to it is local-only and gitignored.
+- `site/NiteLite.zip` is gitignored. Always run `./build.sh package` before publishing, or the page links to a stale build.
+- When the app version changes, update the version and size in `site/index.html` (hero text and the JSON-LD block).
+- Public access is a Spacefast grant on `/**`. A `/*` pattern does not cover the homepage.
+
+### SEO files
+`robots.txt`, `sitemap.xml`, `404.html`, and the canonical/Open Graph URLs in `index.html` all point at `https://nitelite.space.fast/`. Update them together if the domain changes.
+
+## App icon
+
+The icon is a gold film iris around a crescent moon on navy. It was generated with ChatGPT as full-bleed 1024px square artwork; macOS applies the rounded-square mask itself, so don't add corners or padding. The sizes live in `NiteLite/Assets.xcassets/AppIcon.appiconset/`. To replace the artwork, regenerate them from a new square PNG:
+
+```bash
+cd NiteLite/Assets.xcassets/AppIcon.appiconset
+for s in 16 32 128 256 512; do
+  sips -s format png -z $s $s source.png --out icon_${s}x${s}.png
+  sips -s format png -z $((s*2)) $((s*2)) source.png --out icon_${s}x${s}@2x.png
+done
+```
+
+The website icons (`site/icon-64.png`, `site/icon-512.png`) are the masked version macOS renders, exported from the built app.
 
 ## Permissions
 On first run, macOS asks for permission to control System Events. This is required for NiteLite to toggle Dark Mode.
@@ -65,6 +98,8 @@ If the toggle doesn't work:
 ## How it Works
 When you toggle, NiteLite covers every display with a full-screen overlay, plays the transition until the screen is fully black, flips the system appearance, waits for macOS to confirm the change, then plays the reveal.
 
+**Timing**: macOS reports the new appearance well before other apps finish redrawing, so NiteLite holds on black for 400ms after the switch before revealing. Without that hold you see the old theme come back, then flip. A full toggle takes about a second. The details and the measurement script are in [docs/04-animation-system.md](docs/04-animation-system.md).
+
 **Dark Mode toggle methods** (tried in order):
 1. **AppleScript** via `NSAppleScript` and System Events
 2. **`osascript`** command-line fallback
@@ -82,14 +117,17 @@ The marketing materials demonstrate the smooth animation and instant dark mode s
 
 ## Project Structure
 ```
-build.sh                         # Build / install script
+build.sh                         # Build / install / package script
+scripts/measure-toggle.swift     # Screen-recording timing harness
+site/                            # Download page (nitelite.space.fast)
 NiteLite/
 ├── NiteLiteApp.swift            # Main app entry point
 ├── AppDelegate.swift            # Menubar setup, hotkey, and event handling
 ├── DarkModeManager.swift        # Dark mode toggle logic
 ├── OverlayAnimationWindow.swift # Transition animations (all styles)
+├── Assets.xcassets              # App icon
 ├── Info.plist                   # App metadata
 └── NiteLite.entitlements        # Required permissions
 docs/                            # Architecture notes
-marketing/                       # Demo page
+marketing/                       # Original placeholder demo page
 ```
