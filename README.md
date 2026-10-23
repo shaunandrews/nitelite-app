@@ -51,12 +51,11 @@ System Settings → General → Login Items → add NiteLite.
 
 ## Website
 
-The site lives in `site/` and is published at **https://nitelite.space.fast** (Spacefast, in Shaun's Team, public). It's static files with no JS build step: `index.html` plus `js/room.js`, loading three.js from jsDelivr.
+The site lives in `site/` and is published at **https://nitelite.space.fast** (Spacefast, in Shaun's Team, public). It's one screen, one file (`site/index.html`, no build step): a light switch, and a choice of how it switches. Flipping it plays that cut over the whole page on a `<canvas>` and swaps the theme at black, using the app's own timings. The cuts are ports of `OverlayAnimationWindow.swift`, so keep the two in sync when either changes.
 
 ### Publish an update
 ```bash
 ./build.sh package    # rebuilds NiteLite.zip into site/
-# plus site/room/ if the scene changed (see "The bedroom scene")
 sf publish site       # publishes a new version to the same space
 ```
 
@@ -64,24 +63,6 @@ sf publish site       # publishes a new version to the same space
 - `site/NiteLite.zip` is gitignored. Always run `./build.sh package` before publishing, or the page links to a stale build.
 - When the app version changes, update the version and size in `site/index.html` (hero text and the JSON-LD block).
 - Public access is a Spacefast grant on `/**`. A `/*` pattern does not cover the homepage.
-
-### The bedroom scene
-The site *is* a live 3D bedroom (three.js, `site/js/room.js`). Light mode is a sunny morning; dark mode is night with the bedside lamp on. Each NiteLite transition is an object you can click, and it plays in real time: the curtains draw, the blinds tilt (and their shadows move), the TV collapses to a dot, the projector's iris closes, the door swings shut. The page theme flips while the room is black. The headline is painted on the wall above the lamp, the book on the nightstand holds the install steps, the phone is the download, and the alarm clock shows the real time.
-
-The room is modelled in Blender (`scene/`) and exported for the web:
-
-```bash
-python3 -I scene/fetch_assets.py   # CC0 models, textures and skies from Poly Haven (~150 MB, gitignored)
-BLENDER=/Applications/Blender.app/Contents/MacOS/Blender
-$BLENDER -b --factory-startup --disable-autoexec -P scene/export_web.py   # → site/room/room.glb, tex/, skies
-scene/posters.sh                   # → site/room/day.jpg, night.jpg (shown while the room loads)
-```
-
-- `scene/build_scene.py` builds the room. It can also render Cycles stills: `--state day|night --cam wide|corner|nightstand|low`.
-- `scene/export_web.py` applies modifiers, adds metre-scale UVs, gives procedural surfaces placeholder materials (`Wall`, `Velvet`, …), shrinks prop textures and writes a Draco-compressed GLB (~3.5 MB).
-- `site/js/room.js` retextures those placeholders (`MATERIALS`), sets up lights for both states (`STATES`), and defines each transition (`TRANSITIONS`). Blender coordinates map to three.js with `b(x, y, z)`.
-- `site/room/` is generated and gitignored, like the zip. Rebuild it before publishing.
-- The duvet and throw are cloth simulations cached in `scene/cache/`. Delete it after changing the bed.
 
 ### SEO files
 `robots.txt`, `sitemap.xml`, `404.html`, and the canonical/Open Graph URLs in `index.html` all point at `https://nitelite.space.fast/`. Update them together if the domain changes.
@@ -138,7 +119,6 @@ The marketing materials demonstrate the smooth animation and instant dark mode s
 ```
 build.sh                         # Build / install / package script
 scripts/measure-toggle.swift     # Screen-recording timing harness
-scene/                           # Blender bedroom: build, export for the web, posters
 site/                            # Download page (nitelite.space.fast)
 NiteLite/
 ├── NiteLiteApp.swift            # Main app entry point

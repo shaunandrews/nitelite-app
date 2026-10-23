@@ -10,26 +10,19 @@
 <meta property="og:url" content="https://nitelite.space.fast/">
 <meta property="og:title" content="NiteLite: let there be night">
 <meta property="og:description" content="A free macOS menu bar app that switches Light and Dark Mode with a film transition.">
-<meta property="og:image" content="https://nitelite.space.fast/room/night.jpg">
+<meta property="og:image" content="https://nitelite.space.fast/icon-512.png">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" type="image/png" href="icon-64.png">
 <link rel="apple-touch-icon" href="icon-512.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&display=swap" rel="stylesheet">
-<link rel="preload" href="room/room.glb" as="fetch" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&display=swap" rel="stylesheet">
 <script>
-  // Theme before paint, so the loading still and the page never flash the wrong mode
+  // Pick the theme before paint so the page never flashes the wrong mode
   try {
     const saved = localStorage.getItem("nitelite-theme");
     if (saved) document.documentElement.dataset.theme = saved;
   } catch (e) {}
-</script>
-<script type="importmap">
-{ "imports": {
-  "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
-  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
-} }
 </script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@graph":[
@@ -42,161 +35,410 @@
   --navy: #0c1b2e;
   --gold: #f5c342;
   --cream: #fcf3e3;
-  --ink: var(--navy);
-  --paper: var(--cream);
-  --bar: rgba(252, 243, 227, 0.82);
+  --bg: var(--cream);
+  --text: var(--navy);
+  --muted: #4a5869;
+  --line: #e2d4b8;
+  --plate: #fbf6ec;
+  --plate-edge: #e3d8c4;
+  --slot: #d8ccb6;
   --display: "Big Shoulders Display", "Avenir Next Condensed", "Arial Narrow", sans-serif;
   --body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   color-scheme: light;
 }
-:root[data-theme="dark"] { --ink: var(--cream); --paper: var(--navy); --bar: rgba(12, 27, 46, 0.82); color-scheme: dark; }
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) { --ink: var(--cream); --paper: var(--navy); --bar: rgba(12, 27, 46, 0.82); color-scheme: dark; }
+:root[data-theme="dark"] {
+  --bg: var(--navy);
+  --text: var(--cream);
+  --muted: #a9b5c4;
+  --line: #24374f;
+  --plate: #e9e1d2;
+  --plate-edge: #b9ae9b;
+  --slot: #a99d88;
+  color-scheme: dark;
 }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: var(--navy); --text: var(--cream); --muted: #a9b5c4; --line: #24374f;
+    --plate: #e9e1d2; --plate-edge: #b9ae9b; --slot: #a99d88;
+    color-scheme: dark;
+  }
+}
+
 *, *::before, *::after { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
-body { background: #05080d; color: var(--ink); font: 400 1rem/1.5 var(--body); overflow: hidden; }
+body {
+  min-height: 100svh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  background: var(--bg);
+  color: var(--text);
+  font: 400 1rem/1.5 var(--body);
+  overflow: hidden;
+}
 a { color: inherit; text-underline-offset: 0.18em; }
-:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; border-radius: 4px; }
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 4px; border-radius: 6px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-/* The room: WebGL canvas, the 3D DOM layer for things on walls, and the
-   rendered stills that stand in while it loads (or if WebGL is missing) */
-#poster, #gl, #css3d { position: fixed; inset: 0; width: 100%; height: 100%; }
-#poster { background: #05080d center / cover no-repeat url("room/day.jpg"); transition: opacity 600ms ease-out; }
-:root[data-theme="dark"] #poster { background-image: url("room/night.jpg"); }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) #poster { background-image: url("room/night.jpg"); } }
-body.ready #poster { opacity: 0; pointer-events: none; }
-#gl { display: block; touch-action: none; }
-#css3d { pointer-events: none; }
-#css3d .wall { pointer-events: auto; }
-body.hovering #gl { cursor: pointer; }
-
-/* Words painted on the wall above the lamp (positioned in 3D by room.js) */
-.wall { width: 1100px; color: var(--ink); }
-body:not(.ready) .wall { display: none; }
-.wall h1 { font-family: var(--display); font-weight: 900; font-size: 190px; line-height: 0.92; margin: 0; letter-spacing: 0.005em; }
-.wall p { font-size: 46px; line-height: 1.3; margin: 34px 0 0; max-width: 22em; opacity: 0.86; }
-.wall .download { margin-top: 44px; font-size: 40px; padding: 26px 40px; border-radius: 22px; gap: 18px; }
-.wall .download svg { width: 44px; height: 44px; }
-.download { display: inline-flex; align-items: center; gap: 0.6rem; padding: 0.8rem 1.25rem; background: var(--gold); color: var(--navy); font-weight: 650; text-decoration: none; border-radius: 10px; box-shadow: 0 6px 18px -8px rgba(0, 0, 0, 0.5); }
+/* Top and bottom rails */
+.rail { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: clamp(0.75rem, 2.5vh, 1.5rem) clamp(1rem, 4vw, 2.5rem); font-size: 0.9375rem; }
+.brand { display: flex; align-items: center; gap: 0.55rem; font-weight: 650; text-decoration: none; }
+.brand img { width: 28px; height: 28px; }
+.download { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1rem; background: var(--gold); color: var(--navy); font-weight: 650; text-decoration: none; border-radius: 10px; box-shadow: 0 1px 0 rgba(12, 27, 46, 0.2), 0 6px 16px -8px rgba(12, 27, 46, 0.5); white-space: nowrap; }
 .download:hover { background: #ffd25e; }
-.download svg { width: 20px; height: 20px; }
+.download svg { width: 18px; height: 18px; }
+footer.rail { color: var(--muted); font-size: 0.8125rem; }
+.linkish { background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 0.18em; color: inherit; }
 
-/* Chrome */
-.menubar { position: fixed; top: 0; left: 0; right: 0; z-index: 10; height: 2.5rem; display: flex; align-items: center; gap: 1rem; padding: 0 max(1rem, env(safe-area-inset-left)); background: var(--bar); border-bottom: 1px solid color-mix(in srgb, var(--ink) 14%, transparent); font-size: 0.875rem; color: var(--ink); }
-@supports (backdrop-filter: blur(1px)) { .menubar { backdrop-filter: saturate(1.4) blur(14px); } }
-.brand { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; }
-.brand img { width: 20px; height: 20px; }
-.menubar nav { margin-left: auto; display: flex; align-items: center; gap: 0.25rem; }
-.menubar nav a, .menubar nav button { padding: 0.25rem 0.5rem; text-decoration: none; border-radius: 4px; border: 0; background: none; cursor: pointer; }
-.menubar nav a:hover, .menubar nav button:hover { background: color-mix(in srgb, var(--ink) 10%, transparent); }
-.toggle { display: grid; place-items: center; width: 2.25rem; height: 1.75rem; }
-.toggle svg { width: 18px; height: 18px; }
-.toggle .moon { display: none; }
-:root[data-theme="dark"] .toggle .sun { display: none; }
-:root[data-theme="dark"] .toggle .moon { display: block; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .toggle .sun { display: none; } :root:not([data-theme="light"]) .toggle .moon { display: block; } }
-.clock { display: none; font-variant-numeric: tabular-nums; min-width: 4.5rem; text-align: right; }
-@media (min-width: 30rem) { .clock { display: block; } }
+/* Centre stage */
+main { display: grid; place-content: center; justify-items: center; gap: clamp(1rem, 3.2vh, 2rem); padding: 0 1rem; text-align: center; min-height: 0; }
+h1 { font-family: var(--display); font-weight: 900; font-size: clamp(2.75rem, min(11vw, 10vh), 6.5rem); line-height: 0.95; margin: 0; letter-spacing: 0.005em; }
+.lede { margin: -0.5rem 0 0; max-width: 30em; color: var(--muted); font-size: clamp(0.9375rem, 2vh, 1.125rem); }
 
-/* What you can click: a keyboard-friendly twin of the room's hotspots */
-.legend { position: fixed; left: 0; right: 0; bottom: 0; z-index: 10; display: flex; gap: 0.4rem; justify-content: center; flex-wrap: wrap; padding: 0.75rem 1rem max(0.75rem, env(safe-area-inset-bottom)); pointer-events: none; }
-.legend button { pointer-events: auto; border: 0; cursor: pointer; padding: 0.45rem 0.8rem; border-radius: 999px; background: var(--bar); color: var(--ink); font-size: 0.875rem; font-weight: 600; box-shadow: 0 2px 10px -4px rgba(0, 0, 0, 0.5); }
-@supports (backdrop-filter: blur(1px)) { .legend button { backdrop-filter: blur(12px); } }
-.legend button:hover, .legend button.hot { background: var(--gold); color: var(--navy); }
-.legend .kbd { opacity: 0.6; font-weight: 400; }
+/* The light switch */
+.switch {
+  --h: clamp(150px, 30vh, 260px);
+  position: relative;
+  width: calc(var(--h) * 0.62); height: var(--h);
+  padding: 0; border: 0; cursor: pointer;
+  border-radius: calc(var(--h) * 0.07);
+  background: linear-gradient(160deg, #fff 0%, var(--plate) 45%, var(--plate-edge) 100%);
+  box-shadow:
+    0 calc(var(--h) * 0.05) calc(var(--h) * 0.12) -0.02em rgba(12, 27, 46, 0.32),
+    0 1px 2px rgba(12, 27, 46, 0.25),
+    inset 0 -2px 3px rgba(12, 27, 46, 0.12),
+    inset 0 2px 1px rgba(255, 255, 255, 0.9);
+  -webkit-tap-highlight-color: transparent;
+}
+/* Screws */
+.switch::before, .switch::after {
+  content: ""; position: absolute; left: 50%; width: calc(var(--h) * 0.055); height: calc(var(--h) * 0.055);
+  margin-left: calc(var(--h) * -0.0275); border-radius: 50%;
+  background: linear-gradient(135deg, #f4efe6, #b8ad99);
+  box-shadow: inset 0 0 0 1px rgba(12, 27, 46, 0.18);
+}
+.switch::before { top: calc(var(--h) * 0.08); }
+.switch::after { bottom: calc(var(--h) * 0.08); }
+.slot {
+  position: absolute; left: 50%; top: 50%;
+  width: calc(var(--h) * 0.2); height: calc(var(--h) * 0.38);
+  transform: translate(-50%, -50%);
+  border-radius: calc(var(--h) * 0.03);
+  background: var(--slot);
+  box-shadow: inset 0 2px 5px rgba(12, 27, 46, 0.45), 0 1px 0 rgba(255, 255, 255, 0.7);
+  perspective: 300px;
+}
+.lever {
+  position: absolute; left: 12%; right: 12%; top: 6%; height: 54%;
+  border-radius: calc(var(--h) * 0.022);
+  background: linear-gradient(180deg, #fff 0%, #f1ebdf 60%, #d9d0bf 100%);
+  box-shadow: 0 3px 4px rgba(12, 27, 46, 0.35), inset 0 1px 0 #fff;
+  transform-origin: 50% 100%;
+  transition: top 160ms cubic-bezier(0.3, 1.6, 0.5, 1), transform 160ms cubic-bezier(0.3, 1.6, 0.5, 1), background 300ms, box-shadow 300ms;
+}
+/* Lights off (dark mode): lever down, with the little glow of an illuminated switch */
+:root[data-theme="dark"] .lever {
+  top: 40%;
+  background: linear-gradient(0deg, #fff 0%, #f1ebdf 60%, #d9d0bf 100%);
+  box-shadow: 0 -2px 4px rgba(12, 27, 46, 0.3), 0 0 14px 2px rgba(245, 195, 66, 0.55), inset 0 0 6px rgba(245, 195, 66, 0.6);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .lever {
+    top: 40%;
+    background: linear-gradient(0deg, #fff 0%, #f1ebdf 60%, #d9d0bf 100%);
+    box-shadow: 0 -2px 4px rgba(12, 27, 46, 0.3), 0 0 14px 2px rgba(245, 195, 66, 0.55), inset 0 0 6px rgba(245, 195, 66, 0.6);
+  }
+}
+.switch:active .lever { transform: scale(0.97); }
 
-.tip { position: fixed; z-index: 11; pointer-events: none; padding: 0.35rem 0.6rem; border-radius: 6px; background: var(--cream); color: var(--navy); font-size: 0.8125rem; font-weight: 600; white-space: nowrap; transform: translate(-50%, calc(-100% - 16px)); opacity: 0; transition: opacity 120ms; }
-.tip.on { opacity: 1; }
-.tip small { display: block; font-weight: 400; color: #3d4c60; }
+/* How it switches */
+.cuts { border: 0; margin: 0; padding: 0; display: grid; justify-items: center; gap: 0.6rem; }
+.cuts legend { padding: 0; margin-bottom: 0.6rem; font-size: 0.8125rem; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem; }
+.chips label { position: relative; }
+.chips input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.chips span { display: block; padding: 0.45rem 0.9rem; border: 1.5px solid var(--line); border-radius: 999px; font-size: 0.875rem; font-weight: 600; transition: background 120ms, border-color 120ms; }
+.chips input:hover + span { border-color: var(--text); }
+.chips input:checked + span { background: var(--text); border-color: var(--text); color: var(--bg); }
+.chips input:focus-visible + span { outline: 3px solid var(--gold); outline-offset: 2px; }
 
-/* The install steps open like the book on the nightstand */
-.book { position: fixed; z-index: 12; right: max(1rem, 4vw); top: 50%; transform: translateY(-50%); width: min(26rem, calc(100% - 2rem)); max-height: calc(100% - 7rem); overflow: auto; padding: 1.6rem 1.6rem 1.4rem; border-radius: 4px 14px 14px 4px; background: #fbf4e6; color: var(--navy); box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.6), inset 10px 0 18px -14px rgba(60, 40, 10, 0.5); }
-.book[hidden] { display: none; }
-.book h2 { font-family: var(--display); font-weight: 900; font-size: 2.4rem; line-height: 1; margin: 0 2rem 1rem 0; }
-.book ol { margin: 0; padding-left: 1.3rem; }
-.book li { margin-bottom: 0.8rem; padding-left: 0.3rem; }
-.book li::marker { font-family: var(--display); font-weight: 900; color: #c8951c; }
-.book p { color: #3d4c60; font-size: 0.9375rem; margin: 1rem 0 0; }
-.book .close { position: absolute; top: 0.8rem; right: 0.8rem; width: 2.25rem; height: 2.25rem; border: 0; border-radius: 50%; background: rgba(12, 27, 46, 0.08); cursor: pointer; font-size: 1.2rem; line-height: 1; color: var(--navy); }
-kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid #d9c8a8; border-bottom-width: 2px; border-radius: 4px; }
+/* Install steps */
+dialog { width: min(30rem, calc(100% - 2rem)); padding: 1.75rem; border: 0; border-radius: 14px; background: var(--bg); color: var(--text); box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.6); }
+dialog::backdrop { background: rgba(5, 10, 18, 0.55); }
+dialog h2 { font-family: var(--display); font-weight: 900; font-size: 2.25rem; line-height: 1; margin: 0 0 1rem; }
+dialog ol { margin: 0; padding-left: 1.3rem; }
+dialog li { margin-bottom: 0.75rem; padding-left: 0.3rem; }
+dialog li::marker { font-family: var(--display); font-weight: 900; color: #c8951c; }
+dialog p { color: var(--muted); font-size: 0.9375rem; margin: 1rem 0 0; }
+dialog form { margin-top: 1.25rem; text-align: right; }
+dialog form button { padding: 0.5rem 1rem; border: 1.5px solid var(--text); border-radius: 999px; background: none; cursor: pointer; font-weight: 600; }
+kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; }
 
-.loading { position: fixed; left: 50%; bottom: 4.5rem; transform: translateX(-50%); z-index: 10; padding: 0.4rem 0.8rem; border-radius: 999px; background: var(--bar); color: var(--ink); font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
-body.ready .loading { display: none; }
-.credit { position: fixed; z-index: 9; right: 0.75rem; bottom: 0.4rem; margin: 0; font-size: 0.6875rem; color: rgba(255, 255, 255, 0.55); }
-@media (max-width: 52rem) { .credit { display: none; } }
+/* The effect that masks the page while it switches */
+#mask { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100; }
 
-/* Without WebGL: a plain page over the rendered still */
-body.flat { overflow: auto; }
-body.flat #gl, body.flat #css3d, body.flat .legend, body.flat .loading { display: none; }
-body.flat .fallback { display: block; }
-.fallback { display: none; position: relative; z-index: 5; margin: 5rem auto 6rem; width: min(40rem, calc(100% - 2rem)); padding: 2rem; border-radius: 14px; background: var(--paper); color: var(--ink); }
-.fallback h2 { font-family: var(--display); font-weight: 900; font-size: clamp(3rem, 10vw, 5rem); line-height: 1; margin: 0 0 1rem; }
+@media (max-height: 560px) { .lede { display: none; } }
 </style>
 </head>
 <body>
-<div id="poster" role="img" aria-label="A bedroom with a bedside lamp, rendered in 3D."></div>
-<canvas id="gl" aria-label="Interactive 3D bedroom. Use the buttons at the bottom of the screen to play each transition."></canvas>
-<div id="css3d"></div>
-
-<header class="menubar">
-  <span class="brand"><img src="icon-64.png" width="20" height="20" alt="">NiteLite</span>
-  <nav aria-label="Page">
-    <button type="button" data-action="install">Install</button>
-    <a href="NiteLite.zip" download>Download</a>
-    <button class="toggle" id="toggle" type="button" data-transition="lamp" aria-label="Pull the lamp chain: switch to Dark Mode">
-      <svg class="sun" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg>
-      <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1Z"/></svg>
-    </button>
-    <span class="clock" id="clock" aria-hidden="true"></span>
-  </nav>
-</header>
-
-<!-- Painted on the wall in 3D once the room loads; also the page's real heading -->
-<div class="wall" id="wall">
-  <h1>Let there be night.</h1>
-  <p>NiteLite lives in your Mac's menu bar. Click it and the screen cuts to black like the end of a reel, then comes back up in the other mode.</p>
+<header class="rail">
+  <a class="brand" href="/"><img src="icon-64.png" width="28" height="28" alt="">NiteLite</a>
   <a class="download" href="NiteLite.zip" download>
     <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0-5-5m5 5 5-5M4 20h16"/></svg>
-    Download for Mac · free
+    Download for Mac
   </a>
-</div>
+</header>
 
-<nav class="legend" aria-label="Transitions in the room">
-  <button type="button" data-transition="curtains">Curtain call</button>
-  <button type="button" data-transition="blinds">Venetian blinds</button>
-  <button type="button" data-transition="tv">Old TV</button>
-  <button type="button" data-transition="projector">Film iris</button>
-  <button type="button" data-transition="door">Wipe</button>
-  <button type="button" data-transition="lamp">Lamp <span class="kbd">D</span></button>
-</nav>
+<main>
+  <h1 id="headline">Let there be night.</h1>
+  <p class="lede">NiteLite is a free menu bar app that switches your Mac between Light and Dark Mode, with a film cut in between. Flip the switch.</p>
 
-<div class="tip" id="tip"></div>
+  <button class="switch" id="switch" type="button" role="switch" aria-checked="true" aria-label="Lights">
+    <span class="slot"><span class="lever"></span></span>
+  </button>
 
-<aside class="book" id="book" hidden aria-labelledby="book-title">
-  <button class="close" type="button" data-action="close-book" aria-label="Close the book">×</button>
-  <h2 id="book-title">Install it in a minute</h2>
+  <fieldset class="cuts">
+    <legend>How it switches</legend>
+    <div class="chips">
+      <label><input type="radio" name="cut" value="iris" checked><span>Iris</span></label>
+      <label><input type="radio" name="cut" value="wipe"><span>Wipe</span></label>
+      <label><input type="radio" name="cut" value="tv"><span>Old TV</span></label>
+      <label><input type="radio" name="cut" value="blinds"><span>Blinds</span></label>
+      <label><input type="radio" name="cut" value="curtain"><span>Curtains</span></label>
+    </div>
+  </fieldset>
+</main>
+
+<footer class="rail">
+  <span>Free · macOS 13 or later · <button class="linkish" type="button" id="how">How to install</button></span>
+  <span>Made by <a href="https://shaunandrews.com">Shaun Andrews</a></span>
+</footer>
+
+<dialog id="install" aria-labelledby="install-title">
+  <h2 id="install-title">Install it in a minute</h2>
   <ol>
     <li><a href="NiteLite.zip" download>Download NiteLite</a> (1.8 MB) and open the zip.</li>
     <li>Drag NiteLite into your Applications folder, then open it.</li>
     <li>NiteLite isn't notarized by Apple, so macOS blocks it the first time. Open System Settings, go to Privacy &amp; Security, scroll down, and click Open Anyway.</li>
     <li>When asked, let NiteLite control System Events. That's how it flips the Dark Mode setting.</li>
   </ol>
-  <p>Press <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>D</kbd> anywhere to switch, or right-click the menu bar icon to pick a transition. Needs macOS 13 or later, Apple silicon or Intel.</p>
-</aside>
+  <p>Then press <kbd>⌘</kbd> <kbd>⇧</kbd> <kbd>D</kbd> anywhere, or click the menu bar icon. Right-click it to pick a cut.</p>
+  <form method="dialog"><button>Done</button></form>
+</dialog>
 
-<div class="loading" id="loading">Setting up the room…</div>
-<p class="credit">Made by <a href="https://shaunandrews.com">Shaun Andrews</a> · assets from <a href="https://polyhaven.com">Poly Haven</a></p>
+<canvas id="mask" aria-hidden="true"></canvas>
 <p class="sr-only" id="status" aria-live="polite"></p>
 
-<div class="fallback">
-  <h2>Let there be night.</h2>
-  <p>NiteLite lives in your Mac's menu bar. Click it and the screen cuts to black like the end of a reel, then comes back up in the other mode.</p>
-  <p><a class="download" href="NiteLite.zip" download>Download for Mac · free</a></p>
-</div>
+<script>
+(() => {
+  const root = document.documentElement;
+  const canvas = document.getElementById("mask");
+  const ctx = canvas.getContext("2d");
+  const sw = document.getElementById("switch");
+  const headline = document.getElementById("headline");
+  const status = document.getElementById("status");
+  const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
+  const systemDark = matchMedia("(prefers-color-scheme: dark)");
+  let busy = false;
 
-<script type="module" src="js/room.js"></script>
+  const isDark = () => (root.dataset.theme ? root.dataset.theme === "dark" : systemDark.matches);
+  const store = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+  const recall = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+
+  function sync() {
+    const dark = isDark();
+    sw.setAttribute("aria-checked", String(!dark));
+    headline.textContent = dark ? "Let there be light." : "Let there be night.";
+  }
+  sync();
+  systemDark.addEventListener("change", sync);
+
+  // Remember the chosen cut
+  const saved = recall("nitelite-cut");
+  if (saved) {
+    const input = document.querySelector(`input[name="cut"][value="${saved}"]`);
+    if (input) input.checked = true;
+  }
+  document.querySelectorAll('input[name="cut"]').forEach((i) => i.addEventListener("change", () => store("nitelite-cut", i.value)));
+  const cut = () => document.querySelector('input[name="cut"]:checked').value;
+
+  function flip() {
+    const next = isDark() ? "light" : "dark";
+    root.dataset.theme = next;
+    store("nitelite-theme", next);
+    sync();
+    status.textContent = next === "dark" ? "Dark Mode" : "Light Mode";
+  }
+
+  // ---- The cuts, drawn over the whole page. Timings follow the app's.
+  // SwiftUI's .easeIn / .easeOut (cubic-bezier .42,0,1,1 and 0,0,.58,1)
+  function bezier(x1, y1, x2, y2) {
+    const A = (a, b) => 1 - 3 * b + 3 * a, B = (a, b) => 3 * b - 6 * a, C = (a) => 3 * a;
+    const at = (t, a, b) => ((A(a, b) * t + B(a, b)) * t + C(a)) * t;
+    const slope = (t, a, b) => 3 * A(a, b) * t * t + 2 * B(a, b) * t + C(a);
+    return (x) => {
+      if (x <= 0) return 0; if (x >= 1) return 1;
+      let t = x;
+      for (let i = 0; i < 8; i++) { const s = slope(t, x1, x2); if (!s) break; t -= (at(t, x1, x2) - x) / s; }
+      return at(t, y1, y2);
+    };
+  }
+  const easeIn = bezier(0.42, 0, 1, 1), easeOut = bezier(0, 0, 0.58, 1);
+  const clamp01 = (v) => Math.max(0, Math.min(1, v));
+  const seg = (t, start, dur) => clamp01((t - start) / dur);
+  // Damped spring step response, like SwiftUI's .spring(response:dampingFraction:)
+  function spring(t, response, damping) {
+    const wn = (2 * Math.PI) / response, wd = wn * Math.sqrt(1 - damping * damping);
+    return 1 - Math.exp(-damping * wn * t) * (Math.cos(wd * t) + ((damping * wn) / wd) * Math.sin(wd * t));
+  }
+  const black = (c, w, h) => { c.fillStyle = "#000"; c.fillRect(0, 0, w, h); };
+  function holeBlack(c, w, h, r) {
+    black(c, w, h);
+    if (r <= 0) return;
+    c.globalCompositeOperation = "destination-out";
+    c.beginPath(); c.arc(w / 2, h / 2, r, 0, Math.PI * 2); c.fill();
+    c.globalCompositeOperation = "source-over";
+  }
+  function drawCurtain(c, w, h, p, wave, left) {
+    const cw = w / 2 + 20, waves = 8, amp = 15, step = h / waves;
+    const lead = left ? -cw + (cw + w / 2) * p : w + cw - (cw + w / 2) * p;
+    const trail = left ? lead - cw : lead + cw;
+    c.beginPath(); c.moveTo(trail, 0); c.lineTo(lead, 0);
+    for (let i = 0; i < waves; i++) {
+      const off = Math.sin(wave + i * 0.5) * amp * (1 + 0.3 * Math.sin(i * 1.7)) * (left ? -1 : 1);
+      c.quadraticCurveTo(lead + off, (i + 0.5) * step, lead, (i + 1) * step);
+    }
+    c.lineTo(trail, h); c.closePath();
+    c.fillStyle = "#000"; c.fill();
+  }
+
+  // cover: seconds to full black; reveal: seconds back; draw(phase, t)
+  const CUTS = {
+    iris: {
+      cover: 0.18, reveal: 0.2,
+      draw(c, w, h, phase, t, toDark) {
+        const maxR = Math.hypot(w, h) / 2;
+        if (toDark) {
+          if (phase === "cover") holeBlack(c, w, h, (1 - easeIn(seg(t, 0, 0.18))) * maxR);
+          else { c.globalAlpha = 1 - easeOut(seg(t, 0, 0.12)); black(c, w, h); }
+        } else {
+          if (phase === "cover") { c.globalAlpha = easeIn(seg(t, 0, 0.12)); black(c, w, h); }
+          else holeBlack(c, w, h, easeOut(seg(t, 0, 0.2)) * maxR);
+        }
+      },
+    },
+    wipe: {
+      cover: 0.2, reveal: 0.25,
+      draw(c, w, h, phase, t) {
+        const p = phase === "cover" ? easeIn(seg(t, 0, 0.2)) * 0.5 : 0.5 + easeOut(seg(t, 0, 0.25)) * 0.5;
+        const feather = w * 0.1, band = w + feather * 2, x = -band + (w + band) * p;
+        const g = c.createLinearGradient(x, 0, x + band, 0);
+        g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(feather / band, "#000");
+        g.addColorStop(1 - feather / band, "#000"); g.addColorStop(1, "rgba(0,0,0,0)");
+        c.fillStyle = g; c.fillRect(x, 0, band, h);
+      },
+    },
+    tv: {
+      cover: 0.23, reveal: 0.19,
+      draw(c, w, h, phase, t) {
+        let sx, sy, dot;
+        if (phase === "cover") {
+          sy = 1 - easeIn(seg(t, 0, 0.1)) * 0.995;
+          sx = 1 - easeIn(seg(t, 0.1, 0.08));
+          dot = t < 0.18 ? easeIn(seg(t, 0.1, 0.04)) : 1 - easeOut(seg(t, 0.18, 0.05));
+        } else {
+          dot = t < 0.03 ? 0.8 * easeOut(seg(t, 0, 0.03)) : 0.8 * (1 - easeOut(seg(t, 0.03, 0.06)));
+          sx = easeOut(seg(t, 0.03, 0.06));
+          sy = 0.005 + easeOut(seg(t, 0.09, 0.1)) * 0.995;
+        }
+        black(c, w, h);
+        c.globalCompositeOperation = "destination-out";
+        c.fillRect((w - w * sx) / 2, (h - h * sy) / 2, w * sx, h * sy);
+        c.globalCompositeOperation = "source-over";
+        if (dot > 0) {
+          const g = c.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, 10);
+          g.addColorStop(0, `rgba(255,255,255,${dot})`); g.addColorStop(1, "rgba(255,255,255,0)");
+          c.fillStyle = g; c.fillRect(w / 2 - 12, h / 2 - 8, 24, 16);
+        }
+      },
+    },
+    blinds: {
+      cover: 0.25, reveal: 0.28,
+      draw(c, w, h, phase, t) {
+        const p = phase === "cover" ? easeIn(seg(t, 0, 0.25)) : 1 - easeOut(seg(t, 0, 0.28));
+        const count = 14, stagger = 0.02, travel = 1 - stagger * (count - 1), sh = h / count;
+        c.fillStyle = "#000";
+        for (let i = 0; i < count; i++) {
+          const a = clamp01((p - i * stagger) / travel);
+          c.fillRect(w * (1 - a) * (i % 2 === 0 ? -1 : 1), i * sh, w, sh + 1);
+        }
+      },
+    },
+    curtain: {
+      cover: 0.42, reveal: 0.6,
+      draw(c, w, h, phase, t) {
+        let p, wave;
+        if (phase === "cover") { p = spring(t, 0.7, 0.75); wave = easeOut(clamp01(t / 0.8)) * Math.PI * 2; }
+        else { p = 1 - spring(t, 0.6, 0.7); wave = Math.PI * 2 + easeIn(clamp01(t / 0.7)) * Math.PI * 2; }
+        drawCurtain(c, w, h, p, wave, true);
+        drawCurtain(c, w, h, p, wave + Math.PI, false);
+      },
+    },
+  };
+  const HOLD = 0.12; // a beat on black
+
+  function fit() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    canvas.width = Math.round(innerWidth * dpr);
+    canvas.height = Math.round(innerHeight * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function toggle() {
+    if (busy) return;
+    if (reduceMotion.matches) { flip(); return; }
+    const c = CUTS[cut()];
+    busy = true;
+    fit();
+    const toDark = !isDark();
+    // The lever moves the instant you flip it, like a real switch
+    sw.setAttribute("aria-checked", String(!toDark));
+    sw.querySelector(".lever").style.top = toDark ? "40%" : "6%";
+    const w = innerWidth, h = innerHeight;
+    let flipped = false;
+    const start = performance.now();
+    const frame = (now) => {
+      const t = (now - start) / 1000;
+      ctx.save();
+      ctx.clearRect(0, 0, w, h);
+      if (t < c.cover + HOLD) {
+        c.draw(ctx, w, h, "cover", Math.min(t, c.cover + HOLD), toDark);
+        if (!flipped && t >= c.cover) { flipped = true; flip(); sw.querySelector(".lever").style.top = ""; }
+        ctx.restore();
+        requestAnimationFrame(frame);
+      } else if (t < c.cover + HOLD + c.reveal) {
+        c.draw(ctx, w, h, "reveal", t - c.cover - HOLD, toDark);
+        ctx.restore();
+        requestAnimationFrame(frame);
+      } else {
+        ctx.restore();
+        ctx.clearRect(0, 0, w, h);
+        busy = false;
+      }
+    };
+    requestAnimationFrame(frame);
+  }
+
+  sw.addEventListener("click", toggle);
+  document.addEventListener("keydown", (e) => {
+    if (e.key.toLowerCase() !== "d" || e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.target.closest("input, textarea, select, [contenteditable]")) return;
+    toggle();
+  });
+
+  const dialog = document.getElementById("install");
+  document.getElementById("how").addEventListener("click", () => dialog.showModal());
+})();
+</script>
 </body>
 </html>
