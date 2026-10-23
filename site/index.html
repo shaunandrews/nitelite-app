@@ -39,9 +39,6 @@
   --text: var(--navy);
   --muted: #4a5869;
   --line: #e2d4b8;
-  --plate: #fbf6ec;
-  --plate-edge: #e3d8c4;
-  --slot: #d8ccb6;
   --display: "Big Shoulders Display", "Avenir Next Condensed", "Arial Narrow", sans-serif;
   --body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   color-scheme: light;
@@ -51,15 +48,11 @@
   --text: var(--cream);
   --muted: #a9b5c4;
   --line: #24374f;
-  --plate: #e9e1d2;
-  --plate-edge: #b9ae9b;
-  --slot: #a99d88;
   color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: var(--navy); --text: var(--cream); --muted: #a9b5c4; --line: #24374f;
-    --plate: #e9e1d2; --plate-edge: #b9ae9b; --slot: #a99d88;
     color-scheme: dark;
   }
 }
@@ -95,61 +88,52 @@ main { display: grid; place-content: center; justify-items: center; gap: clamp(1
 h1 { font-family: var(--display); font-weight: 900; font-size: clamp(2.75rem, min(11vw, 10vh), 6.5rem); line-height: 0.95; margin: 0; letter-spacing: 0.005em; }
 .lede { margin: -0.5rem 0 0; max-width: 30em; color: var(--muted); font-size: clamp(0.9375rem, 2vh, 1.125rem); }
 
-/* The light switch */
-.switch {
-  --h: clamp(150px, 30vh, 260px);
-  position: relative;
-  width: calc(var(--h) * 0.62); height: var(--h);
-  padding: 0; border: 0; cursor: pointer;
-  border-radius: calc(var(--h) * 0.07);
-  background: linear-gradient(160deg, #fff 0%, var(--plate) 45%, var(--plate-edge) 100%);
-  box-shadow:
-    0 calc(var(--h) * 0.05) calc(var(--h) * 0.12) -0.02em rgba(12, 27, 46, 0.32),
-    0 1px 2px rgba(12, 27, 46, 0.25),
-    inset 0 -2px 3px rgba(12, 27, 46, 0.12),
-    inset 0 2px 1px rgba(255, 255, 255, 0.9);
-  -webkit-tap-highlight-color: transparent;
-}
-/* Screws */
-.switch::before, .switch::after {
-  content: ""; position: absolute; left: 50%; width: calc(var(--h) * 0.055); height: calc(var(--h) * 0.055);
-  margin-left: calc(var(--h) * -0.0275); border-radius: 50%;
-  background: linear-gradient(135deg, #f4efe6, #b8ad99);
-  box-shadow: inset 0 0 0 1px rgba(12, 27, 46, 0.18);
-}
-.switch::before { top: calc(var(--h) * 0.08); }
-.switch::after { bottom: calc(var(--h) * 0.08); }
-.slot {
-  position: absolute; left: 50%; top: 50%;
-  width: calc(var(--h) * 0.2); height: calc(var(--h) * 0.38);
-  transform: translate(-50%, -50%);
-  border-radius: calc(var(--h) * 0.03);
-  background: var(--slot);
-  box-shadow: inset 0 2px 5px rgba(12, 27, 46, 0.45), 0 1px 0 rgba(255, 255, 255, 0.7);
-  perspective: 300px;
-}
-.lever {
-  position: absolute; left: 12%; right: 12%; top: 6%; height: 54%;
-  border-radius: calc(var(--h) * 0.022);
-  background: linear-gradient(180deg, #fff 0%, #f1ebdf 60%, #d9d0bf 100%);
-  box-shadow: 0 3px 4px rgba(12, 27, 46, 0.35), inset 0 1px 0 #fff;
-  transform-origin: 50% 100%;
-  transition: top 160ms cubic-bezier(0.3, 1.6, 0.5, 1), transform 160ms cubic-bezier(0.3, 1.6, 0.5, 1), background 300ms, box-shadow 300ms;
-}
-/* Lights off (dark mode): lever down, with the little glow of an illuminated switch */
-:root[data-theme="dark"] .lever {
-  top: 40%;
-  background: linear-gradient(0deg, #fff 0%, #f1ebdf 60%, #d9d0bf 100%);
-  box-shadow: 0 -2px 4px rgba(12, 27, 46, 0.3), 0 0 14px 2px rgba(245, 195, 66, 0.55), inset 0 0 6px rgba(245, 195, 66, 0.6);
-}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .lever {
-    top: 40%;
-    background: linear-gradient(0deg, #fff 0%, #f1ebdf 60%, #d9d0bf 100%);
-    box-shadow: 0 -2px 4px rgba(12, 27, 46, 0.3), 0 0 14px 2px rgba(245, 195, 66, 0.55), inset 0 0 6px rgba(245, 195, 66, 0.6);
-  }
-}
-.switch:active .lever { transform: scale(0.97); }
+/* The control: a different physical thing for each cut. data-on="true" is
+   light mode (open, on); "false" is dark mode (closed, off). */
+.stage { --h: clamp(150px, 30vh, 260px); height: var(--h); display: grid; place-items: center; }
+.ctl { height: var(--h); padding: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; border-radius: 12px; }
+.ctl[hidden] { display: none; }
+.ctl svg { display: block; height: 100%; width: auto; overflow: visible; filter: drop-shadow(0 calc(var(--h) * 0.035) calc(var(--h) * 0.05) rgba(12, 27, 46, 0.35)); }
+.ctl:not([hidden]) { animation: arrive 280ms cubic-bezier(0.3, 1.4, 0.5, 1); }
+@keyframes arrive { from { opacity: 0; transform: scale(0.9) translateY(6px); } }
+.spin { transform-box: fill-box; transform-origin: center; } /* shapes centred on 0,0 */
+.fill { transform-box: fill-box; }
+
+/* Iris: a lens whose aperture closes */
+.iris .light { fill: #fff3d2; transition: fill 300ms; }
+.iris .aperture { transition: transform 420ms cubic-bezier(0.6, 0, 0.3, 1); }
+[data-on="false"] .iris .aperture { transform: rotate(70deg) scale(0.05); }
+[data-on="false"] .iris .light { fill: #0c1b2e; }
+
+/* Wipe: a chunky slide switch, sliding the way the wipe goes */
+.wipe .knob { transition: transform 240ms cubic-bezier(0.3, 1.5, 0.5, 1); transform: translateX(82px); }
+[data-on="false"] .wipe .knob { transform: none; }
+.wipe .on-label { fill: #0c1b2e; } .wipe .off-label { fill: #a29680; }
+[data-on="false"] .wipe .on-label { fill: #a29680; } [data-on="false"] .wipe .off-label { fill: #0c1b2e; }
+
+/* Old TV: a 70s knob that clunks between ON and OFF */
+.tv .knob { transition: transform 300ms cubic-bezier(0.5, 1.9, 0.5, 1); transform: rotate(45deg); }
+[data-on="false"] .tv .knob { transform: rotate(-45deg); }
+.tv .led { fill: #ff5a3c; filter: drop-shadow(0 0 4px #ff5a3c); transition: fill 200ms, filter 200ms; }
+[data-on="false"] .tv .led { fill: #4a1f19; filter: none; }
+
+/* Blinds: the slats tilt shut */
+.blinds .slat { transform-origin: center; transition: transform 320ms cubic-bezier(0.5, 0, 0.3, 1); transform: scaleY(0.28); }
+[data-on="false"] .blinds .slat { transform: scaleY(1.12); }
+.blinds .slat:nth-child(odd) { transition-delay: 20ms; }
+
+/* Curtains: yank the rope, the curtains draw */
+.curtain .left { transform-origin: left; transition: transform 520ms cubic-bezier(0.5, 1.25, 0.5, 1); transform: scaleX(0.3); }
+.curtain .right { transform-origin: right; transition: transform 520ms cubic-bezier(0.5, 1.25, 0.5, 1); transform: scaleX(0.3); }
+[data-on="false"] .curtain .left, [data-on="false"] .curtain .right { transform: scaleX(1); }
+.curtain .rope.yank { animation: yank 420ms cubic-bezier(0.3, 1.6, 0.5, 1); }
+@keyframes yank { 35% { transform: translateY(18px); } }
+
+/* Day and night through the little windows */
+.sky-day, .sun { transition: opacity 300ms; }
+[data-on="false"] .sky-day, [data-on="false"] .sun { opacity: 0; }
+.moon { opacity: 0; transition: opacity 300ms; }
+[data-on="false"] .moon { opacity: 1; }
 
 /* How it switches */
 .cuts { border: 0; margin: 0; padding: 0; display: grid; justify-items: center; gap: 0.6rem; }
@@ -191,11 +175,97 @@ kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(
 
 <main>
   <h1 id="headline">Let there be night.</h1>
-  <p class="lede">NiteLite is a free menu bar app that switches your Mac between Light and Dark Mode, with a film cut in between. Flip the switch.</p>
+  <p class="lede">NiteLite is a free menu bar app that switches your Mac between Light and Dark Mode, with a film cut in between. Pick one and try it.</p>
 
-  <button class="switch" id="switch" type="button" role="switch" aria-checked="true" aria-label="Lights">
-    <span class="slot"><span class="lever"></span></span>
-  </button>
+  <div class="stage" id="stage" data-on="true">
+    <button class="ctl iris" type="button" role="switch" aria-checked="true" data-cut="iris" aria-label="Lens aperture">
+      <svg viewBox="-110 -110 220 220" aria-hidden="true">
+        <defs>
+          <mask id="m-iris"><circle r="70" fill="#fff"/><polygon class="aperture spin" fill="#000" points="46.0,0.0 23.0,39.8 -23.0,39.8 -46.0,0.0 -23.0,-39.8 23.0,-39.8"/></mask>
+          <clipPath id="c-iris"><circle r="70"/></clipPath>
+          <radialGradient id="g-glass" cx="35%" cy="30%" r="70%"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></radialGradient>
+        </defs>
+        <circle r="106" fill="#1b1f26"/>
+        <circle r="98" fill="none" stroke="#353b45" stroke-width="12" stroke-dasharray="1.6 3.4"/>
+        <circle r="86" fill="#0f1217"/>
+        <circle r="78" fill="none" stroke="#5c6470" stroke-width="3" stroke-dasharray="1 9.2"/>
+        <circle class="light" r="70"/>
+        <g clip-path="url(#c-iris)">
+          <circle r="70" fill="#0a0c10" mask="url(#m-iris)"/>
+          <g class="aperture spin" stroke="#262b33" stroke-width="1.6"><line x1="46.0" y1="0.0" x2="-141.8" y2="353.2"/><line x1="23.0" y1="39.8" x2="-376.8" y2="53.8"/><line x1="-23.0" y1="39.8" x2="-235.0" y2="-299.4"/><line x1="-46.0" y1="0.0" x2="141.8" y2="-353.2"/><line x1="-23.0" y1="-39.8" x2="376.8" y2="-53.8"/><line x1="23.0" y1="-39.8" x2="235.0" y2="299.4"/></g>
+        </g>
+        <circle r="70" fill="url(#g-glass)" stroke="#000" stroke-width="2"/>
+      </svg>
+    </button>
+
+    <button class="ctl wipe" type="button" role="switch" aria-checked="true" data-cut="wipe" aria-label="Slide switch" hidden>
+      <svg viewBox="0 0 260 150" aria-hidden="true">
+        <defs><linearGradient id="g-plate" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".5" stop-color="#f7f1e5"/><stop offset="1" stop-color="#ddd2bd"/></linearGradient>
+          <linearGradient id="g-knob" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#d9d0bf"/></linearGradient></defs>
+        <rect x="4" y="4" width="252" height="142" rx="18" fill="url(#g-plate)"/>
+        <circle cx="24" cy="75" r="5" fill="#cbbfa9"/><circle cx="236" cy="75" r="5" fill="#cbbfa9"/>
+        <text class="off-label" x="70" y="34" font-size="13" font-weight="700" text-anchor="middle" font-family="system-ui">OFF</text>
+        <text class="on-label" x="190" y="34" font-size="13" font-weight="700" text-anchor="middle" font-family="system-ui">ON</text>
+        <rect x="45" y="46" width="170" height="60" rx="30" fill="#d3c7b0"/>
+        <rect x="45" y="46" width="170" height="60" rx="30" fill="none" stroke="#a99d88" stroke-width="2"/>
+        <g class="knob"><rect x="50" y="51" width="78" height="50" rx="25" fill="url(#g-knob)" stroke="#bfb39d"/><path d="M80 63v26M89 63v26M98 63v26" stroke="#c5b9a3" stroke-width="3" stroke-linecap="round"/></g>
+      </svg>
+    </button>
+
+    <button class="ctl tv" type="button" role="switch" aria-checked="true" data-cut="tv" aria-label="TV power knob" hidden>
+      <svg viewBox="-130 -130 260 260" aria-hidden="true">
+        <defs><radialGradient id="g-chrome" cx="40%" cy="35%" r="75%"><stop offset="0" stop-color="#f4f4f2"/><stop offset=".6" stop-color="#b9b9b4"/><stop offset="1" stop-color="#7e7e79"/></radialGradient>
+          <radialGradient id="g-top" cx="45%" cy="38%" r="70%"><stop offset="0" stop-color="#45454b"/><stop offset="1" stop-color="#18181b"/></radialGradient></defs>
+        <circle r="122" fill="#3a2a1e"/>
+        <circle r="112" fill="url(#g-chrome)"/>
+        <text x="-74" y="-66" font-size="16" font-weight="800" text-anchor="middle" font-family="system-ui" fill="#2b2b2b">OFF</text>
+        <text x="74" y="-66" font-size="16" font-weight="800" text-anchor="middle" font-family="system-ui" fill="#2b2b2b">ON</text>
+        <path d="M-60 -60 l9 9 M60 -60 l-9 9" stroke="#2b2b2b" stroke-width="4" stroke-linecap="round"/>
+        <circle class="led" cx="0" cy="98" r="6"/>
+        <g class="knob spin">
+          <circle r="84" fill="#141416"/>
+          <circle r="79" fill="none" stroke="#2f2f35" stroke-width="10" stroke-dasharray="4.2 4.1"/>
+          <circle r="66" fill="url(#g-top)"/>
+          <rect x="-5" y="-64" width="10" height="34" rx="5" fill="#f5c342"/>
+          <circle r="12" fill="url(#g-chrome)"/>
+        </g>
+      </svg>
+    </button>
+
+    <button class="ctl blinds" type="button" role="switch" aria-checked="true" data-cut="blinds" aria-label="Window blinds" hidden>
+      <svg viewBox="0 0 200 260" aria-hidden="true">
+        <defs><linearGradient id="g-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7fb8ea"/><stop offset="1" stop-color="#cfe6f8"/></linearGradient></defs>
+        <rect x="12" y="12" width="176" height="236" rx="8" fill="#efe6d6" stroke="#cdbfa6" stroke-width="2"/>
+        <rect x="24" y="24" width="152" height="212" fill="#0f1f38"/>
+        <rect class="sky-day" x="24" y="24" width="152" height="212" fill="url(#g-sky)"/>
+        <circle class="sun" cx="140" cy="70" r="16" fill="#ffe08a"/>
+        <circle class="moon" cx="140" cy="70" r="12" fill="#f3ead2"/>
+        <g fill="#f8f3ea" stroke="#d2c6b0" stroke-width="0.8"><rect class="slat fill" x="26" y="38" width="148" height="17"/><rect class="slat fill" x="26" y="56.6" width="148" height="17"/><rect class="slat fill" x="26" y="75.2" width="148" height="17"/><rect class="slat fill" x="26" y="93.8" width="148" height="17"/><rect class="slat fill" x="26" y="112.4" width="148" height="17"/><rect class="slat fill" x="26" y="131" width="148" height="17"/><rect class="slat fill" x="26" y="149.6" width="148" height="17"/><rect class="slat fill" x="26" y="168.2" width="148" height="17"/><rect class="slat fill" x="26" y="186.8" width="148" height="17"/><rect class="slat fill" x="26" y="205.4" width="148" height="17"/><rect class="slat fill" x="26" y="219" width="148" height="17"/></g>
+        <rect x="18" y="22" width="164" height="14" rx="3" fill="#f6f1e7" stroke="#cdbfa6"/>
+        <path d="M166 36v160" stroke="#d9cdb6" stroke-width="3" stroke-linecap="round"/>
+        <rect x="161" y="194" width="10" height="26" rx="5" fill="#efe6d6" stroke="#cdbfa6"/>
+      </svg>
+    </button>
+
+    <button class="ctl curtain" type="button" role="switch" aria-checked="true" data-cut="curtain" aria-label="Curtain rope" hidden>
+      <svg viewBox="0 0 220 260" aria-hidden="true">
+        <defs><linearGradient id="g-sky2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7fb8ea"/><stop offset="1" stop-color="#cfe6f8"/></linearGradient>
+          <pattern id="p-folds" width="12" height="10" patternUnits="userSpaceOnUse"><rect width="12" height="10" fill="#22386b"/><rect x="7" width="5" height="10" fill="#172a55"/><rect x="2" width="2" height="10" fill="#2c4682"/></pattern>
+          <radialGradient id="g-tassel" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#ffe39a"/><stop offset="1" stop-color="#b88324"/></radialGradient></defs>
+        <rect x="40" y="36" width="140" height="196" fill="#0f1f38"/>
+        <rect class="sky-day" x="40" y="36" width="140" height="196" fill="url(#g-sky2)"/>
+        <circle class="sun" cx="140" cy="84" r="16" fill="#ffe08a"/>
+        <circle class="moon" cx="140" cy="84" r="12" fill="#f3ead2"/>
+        <rect x="40" y="36" width="140" height="196" fill="none" stroke="#efe6d6" stroke-width="8"/>
+        <path d="M110 36v196M40 134h140" stroke="#efe6d6" stroke-width="6"/>
+        <rect class="left fill" x="16" y="26" width="96" height="220" fill="url(#p-folds)"/>
+        <rect class="right fill" x="108" y="26" width="96" height="220" fill="url(#p-folds)"/>
+        <rect x="10" y="20" width="200" height="7" rx="3.5" fill="#c99a3a"/>
+        <circle cx="10" cy="23.5" r="7" fill="#c99a3a"/><circle cx="210" cy="23.5" r="7" fill="#c99a3a"/>
+        <g class="rope"><path d="M204 28v168" stroke="#e7c46b" stroke-width="3"/><path d="M204 194c-9 0-12 9-12 17 0 10 6 19 12 19s12-9 12-19c0-8-3-17-12-17z" fill="url(#g-tassel)"/></g>
+      </svg>
+    </button>
+  </div>
 
   <fieldset class="cuts">
     <legend>How it switches</legend>
@@ -234,7 +304,8 @@ kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(
   const root = document.documentElement;
   const canvas = document.getElementById("mask");
   const ctx = canvas.getContext("2d");
-  const sw = document.getElementById("switch");
+  const stage = document.getElementById("stage");
+  const controls = [...stage.querySelectorAll(".ctl")];
   const headline = document.getElementById("headline");
   const status = document.getElementById("status");
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
@@ -245,9 +316,14 @@ kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(
   const store = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
   const recall = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 
+  // data-on="true" is light mode: the lens open, the TV on, blinds and curtains open
+  function setOn(on) {
+    stage.dataset.on = String(on);
+    controls.forEach((c) => c.setAttribute("aria-checked", String(on)));
+  }
   function sync() {
     const dark = isDark();
-    sw.setAttribute("aria-checked", String(!dark));
+    setOn(!dark);
     headline.textContent = dark ? "Let there be light." : "Let there be night.";
   }
   sync();
@@ -259,8 +335,16 @@ kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(
     const input = document.querySelector(`input[name="cut"][value="${saved}"]`);
     if (input) input.checked = true;
   }
-  document.querySelectorAll('input[name="cut"]').forEach((i) => i.addEventListener("change", () => store("nitelite-cut", i.value)));
   const cut = () => document.querySelector('input[name="cut"]:checked').value;
+  // Show the control that belongs to the chosen cut
+  function showControl() {
+    controls.forEach((c) => { c.hidden = c.dataset.cut !== cut(); });
+  }
+  showControl();
+  document.querySelectorAll('input[name="cut"]').forEach((i) => i.addEventListener("change", () => {
+    store("nitelite-cut", i.value);
+    showControl();
+  }));
 
   function flip() {
     const next = isDark() ? "light" : "dark";
@@ -401,9 +485,10 @@ kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(
     busy = true;
     fit();
     const toDark = !isDark();
-    // The lever moves the instant you flip it, like a real switch
-    sw.setAttribute("aria-checked", String(!toDark));
-    sw.querySelector(".lever").style.top = toDark ? "40%" : "6%";
+    // The control moves the instant you use it, like the real thing
+    setOn(!toDark);
+    const rope = stage.querySelector(".curtain .rope");
+    if (cut() === "curtain") { rope.classList.remove("yank"); void rope.getBBox(); rope.classList.add("yank"); }
     const w = innerWidth, h = innerHeight;
     let flipped = false;
     const start = performance.now();
@@ -413,7 +498,7 @@ kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(
       ctx.clearRect(0, 0, w, h);
       if (t < c.cover + HOLD) {
         c.draw(ctx, w, h, "cover", Math.min(t, c.cover + HOLD), toDark);
-        if (!flipped && t >= c.cover) { flipped = true; flip(); sw.querySelector(".lever").style.top = ""; }
+        if (!flipped && t >= c.cover) { flipped = true; flip(); }
         ctx.restore();
         requestAnimationFrame(frame);
       } else if (t < c.cover + HOLD + c.reveal) {
@@ -429,7 +514,7 @@ kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(
     requestAnimationFrame(frame);
   }
 
-  sw.addEventListener("click", toggle);
+  controls.forEach((c) => c.addEventListener("click", toggle));
   document.addEventListener("keydown", (e) => {
     if (e.key.toLowerCase() !== "d" || e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.target.closest("input, textarea, select, [contenteditable]")) return;

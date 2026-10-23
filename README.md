@@ -51,7 +51,7 @@ System Settings → General → Login Items → add NiteLite.
 
 ## Website
 
-The site lives in `site/` and is published at **https://nitelite.space.fast** (Spacefast, in Shaun's Team, public). It's one screen, one file (`site/index.html`, no build step): a light switch, and a choice of how it switches. Flipping it plays that cut over the whole page on a `<canvas>` and swaps the theme at black, using the app's own timings. The cuts are ports of `OverlayAnimationWindow.swift`, so keep the two in sync when either changes.
+The site lives in `site/` and is published at **https://nitelite.space.fast** (Spacefast, in Shaun's Team, public). It's one screen, one file (`site/index.html`, no build step): pick a cut, and the control changes to the thing that causes it (a lens for the iris, a slide switch for the wipe, a TV knob, a blind, a curtain rope). Using it plays that cut over the whole page on a `<canvas>` and swaps the theme at black, using the app's own timings. The cuts are ports of `OverlayAnimationWindow.swift`, so keep the two in sync when either changes.
 
 ### Publish an update
 ```bash
