@@ -105,7 +105,7 @@ def import_gltf(name, loc, rot_z=0.0, scale=1.0):
     before = set(bpy.data.objects)
     bpy.ops.import_scene.gltf(filepath=path)
     new = [o for o in bpy.data.objects if o not in before]
-    root = link(bpy.data.objects.new(name, None))
+    root = link(bpy.data.objects.new(f"{name}_root", None))
     for o in new:
         if o.parent is None:
             o.parent = root
@@ -304,10 +304,11 @@ def build_window(M):
     return blinds
 
 
-def set_blinds(blinds, tilt_deg):
+def set_blinds(blinds, tilt_deg, frame=None, interp="BEZIER"):
     for c in blinds.children:
         if c.get("slat"):
             c.rotation_euler = (0, math.radians(tilt_deg), 0)
+            key(c, "rotation_euler", frame, interp)
 
 
 def curtain_mesh(name, width_flat, span, height, anchor, side, folds=7, nx=140, nz=40, mat=None):
@@ -364,9 +365,11 @@ def build_curtains(M):
     return curtains
 
 
-def set_curtains(curtains, closed):
+def set_curtains(curtains, closed, frame=None, interp="BEZIER"):
     for c in curtains:
-        c.data.shape_keys.key_blocks["Closed"].value = closed
+        k = c.data.shape_keys.key_blocks["Closed"]
+        k.value = closed
+        key(k, "value", frame, interp)
 
 
 def build_door(M):
@@ -458,25 +461,31 @@ def build_bed(M):
     x0, x1 = b["cx"] - b["w"] / 2, b["cx"] + b["w"] / 2
     yh = ROOM["y1"] - 0.08
     yf = yh - b["len"]
-    box("BedBase", x0, x1, yf, yh, 0.12, 0.36, M["bedframe"], bevel=0.02)
+    box("BedBase", x0, x1, yf, yh, 0.16, 0.36, M["bedframe"], bevel=0.008)
     for lx in (x0 + 0.06, x1 - 0.06):
         for ly in (yf + 0.06, yh - 0.06):
-            lathe(f"BedLeg", [(0, 0), (0.022, 0), (0.03, 0.12), (0, 0.12)], M["bedframe"]).location = (lx, ly, 0)
+            lathe(f"BedLeg", [(0, 0), (0.018, 0), (0.026, 0.16), (0, 0.16)], M["bedframe"]).location = (lx, ly, 0)
     box("Headboard", x0 - 0.06, x1 + 0.06, yh, yh + 0.07, 0.3, 1.22, M["headboard"], bevel=0.035, segments=6)
     mat_top = 0.6
     box("Mattress", x0 + 0.03, x1 - 0.03, yf + 0.03, yh - 0.02, 0.36, mat_top, M["sheet"], bevel=0.05, segments=5)
-    half = b["w"] / 2 - 0.03
-    drape("Duvet", b["w"] + 0.5, 1.62, mat_top + 0.005, half, yf + 0.03, yh - 0.55, b["cx"], 0.34, M["duvet"], thick=0.04, noise=0.035)
-    drape("Throw", b["w"] + 0.42, 0.62, mat_top + 0.06, half + 0.02, yf + 0.03, yf + 0.58, b["cx"], 0.36, M["throw"], thick=0.02, noise=0.01)
-    # Rug under the foot of the bed
-    rug = box("Rug", b["cx"] - 1.25, b["cx"] + 1.25, yf - 0.75, yh - 0.6, 0.0, 0.012, M["rug"], bevel=0.006)
-    # Framed NiteLite icon print above the headboard
-    art(M, b["cx"], ROOM["y1"] - 0.01, 1.72, 0.62)
-
+    pillows = []
     for i, px in enumerate((b["cx"] - 0.37, b["cx"] + 0.37)):
         p = pillow(f"Pillow{i}", M["pillow"])
         p.location = (px, yh - 0.24, mat_top + 0.13)
         p.rotation_euler = (math.radians(-28), 0, math.radians(3 if i else -4))
+        pillows.append(p)
+    colliders = [bpy.data.objects[n] for n in ("BedBase", "Mattress", "Headboard", "Floor")] + pillows
+    duvet = cloth("Duvet", M["duvet"], width=b["w"] + 0.55, length=1.75, center=(b["cx"], yf + 0.75), z=mat_top + 0.06,
+                  colliders=colliders, thickness=0.035, frames=70)
+    cloth("Throw", M["throw"], width=b["w"] + 0.45, length=0.6, center=(b["cx"] + 0.05, yf + 0.33), z=mat_top + 0.2,
+          colliders=colliders + [duvet], thickness=0.015, frames=60, stiffness=8)
+
+    # Rug under the foot of the bed
+    box("RugBorder", b["cx"] - 1.25, b["cx"] + 1.25, yf - 0.75, yh - 0.6, 0.0, 0.012, M["rugBorder"], bevel=0.004)
+    box("Rug", b["cx"] - 1.15, b["cx"] + 1.15, yf - 0.65, yh - 0.7, 0.0, 0.014, M["rug"], bevel=0.004)
+    # Framed NiteLite icon print above the headboard
+    art(M, b["cx"], ROOM["y1"] - 0.01, 1.72, 0.62)
+
 
 
 def art(M, cx, y, cz, size):
@@ -492,6 +501,63 @@ def art(M, cx, y, cz, size):
     for loop, (u, v) in zip(face.loops, ((0, 0), (1, 0), (1, 1), (0, 1))):
         loop[uv].uv = (u, v)
     mesh_obj("ArtPrint", bm, M["print"])
+
+
+CACHE = os.path.join(HERE, "cache")
+
+
+def cloth(name, mat, width, length, center, z, colliders, thickness, frames, stiffness=15, res=0.025):
+    """Drop a sheet of cloth onto the bed and keep the settled shape.
+    The settled vertex positions are cached in scene/cache/ (delete to re-simulate)."""
+    nx, ny = int(width / res), int(length / res)
+    bm = bmesh.new()
+    bmesh.ops.create_grid(bm, x_segments=nx, y_segments=ny, size=0.5)
+    for v in bm.verts:
+        v.co = Vector((center[0] + v.co.x * width, center[1] + v.co.y * length, z))
+    ob = mesh_obj(name, bm, mat)
+    key = f"{name}-{nx}x{ny}-{width:.2f}-{length:.2f}-{z:.2f}-{center[0]:.2f}-{center[1]:.2f}-{frames}-{stiffness}.npy"
+    path = os.path.join(CACHE, key)
+    import numpy as np
+    if os.path.exists(path):
+        co = np.load(path)
+        ob.data.vertices.foreach_set("co", co.ravel())
+    else:
+        print("simulating", name)
+        for c in colliders:
+            col = c.modifiers.new("Collision", "COLLISION")
+            c.collision.thickness_outer = 0.004
+            c.collision.cloth_friction = 8
+        mod = ob.modifiers.new("Cloth", "CLOTH")
+        st = mod.settings
+        st.quality = 8
+        st.mass = 0.4
+        st.tension_stiffness = st.compression_stiffness = st.shear_stiffness = stiffness
+        st.bending_stiffness = 0.3
+        st.air_damping = 2.0
+        mod.collision_settings.distance_min = 0.006
+        mod.collision_settings.use_self_collision = False
+        mod.point_cache.frame_start, mod.point_cache.frame_end = 1, frames
+        sc = bpy.context.scene
+        for f in range(1, frames + 1):
+            sc.frame_set(f)
+        ev = ob.evaluated_get(bpy.context.evaluated_depsgraph_get())
+        co = np.empty(len(ev.data.vertices) * 3, dtype=np.float32)
+        ev.data.vertices.foreach_get("co", co)
+        co = co.reshape(-1, 3)
+        ob.modifiers.remove(mod)
+        for c in colliders:
+            c.modifiers.remove(c.modifiers["Collision"])
+        sc.frame_set(1)
+        ob.data.vertices.foreach_set("co", co.ravel())
+        os.makedirs(CACHE, exist_ok=True)
+        np.save(path, co)
+    ob.data.update()
+    sol = ob.modifiers.new("Solidify", "SOLIDIFY")
+    sol.thickness, sol.offset = thickness, 1.0
+    sub = ob.modifiers.new("Subsurf", "SUBSURF")
+    sub.levels = sub.render_levels = 1
+    smooth(ob, angle=80)
+    return ob
 
 
 def pillow(name, mat, w=0.33, d=0.22, h=0.1):
@@ -570,52 +636,121 @@ def build_props(M):
         for ly in (sy0 + 0.06, sy1 - 0.06):
             lathe("StandLeg", [(0, 0), (0.012, 0), (0.02, 0.16), (0, 0.16)], M["walnut"]).location = (lx, ly, 0)
     tv, _ = import_gltf("Television_01", (-1.37, ROOM["y1"] - 0.25, 0.52), rot_z=10)
-    proj, _ = import_gltf("filmstrip_projector_8mm", (-0.88, ROOM["y1"] - 0.24, 0.52), rot_z=-35)
+    # 8mm projector on the floor, pointed at the wall above the TV (the iris clip uses it)
+    proj, _ = import_gltf("filmstrip_projector_8mm", (-1.15, 0.35, 0.0), rot_z=185)
     import_gltf("standing_picture_frame_01", (1.62, ny + 0.12, 0.616), rot_z=-20)
+
+    # The garden outside the right-hand window
+    # Trees sit in the camera's view through the window but out of the sun's path
+    import_gltf("island_tree_02", (10.0, 8.5, -0.5), rot_z=30, scale=2.4)
+    import_gltf("island_tree_02", (19.0, 13.0, -0.5), rot_z=160, scale=2.2)
+    for i, (gy, rz) in enumerate(((-2.5, 90), (0.2, 90), (2.9, 90))):
+        import_gltf("shrub_01", (4.8, gy, -0.5), rot_z=rz, scale=2.6)
     import_gltf("potted_plant_02", (2.15, 1.65, 0), rot_z=40, scale=1.15)
     return clock, parts, screen, tv, proj
 
 
 # ---------------------------------------------------------------- lighting and states
 
-def world(state):
+# Everything that differs between light mode (day) and dark mode (night)
+STATES = {
+    "day": dict(world=4.0, night=0.0, sun=7.0, sun_color=(1.0, 0.88, 0.72), sun_travel=(-0.78, 0.28, -0.42),
+                fill=70.0, fill_color=(0.92, 0.95, 1.0), lamp=0.0, bulb=0.0, screen=0.0, hall=0.0, blinds=12.0),
+    "night": dict(world=0.2, night=1.0, sun=0.3, sun_color=(0.5, 0.64, 1.0), sun_travel=(-0.7, 0.1, -0.55),
+                  fill=1.0, fill_color=(0.45, 0.55, 1.0), lamp=26.0, bulb=40.0, screen=0.6, hall=18.0, blinds=38.0),
+}
+
+
+def world():
+    """Day and night skies in one world, blended by the "Night" value (0 or 1)."""
     w = bpy.data.worlds.new("World")
     bpy.context.scene.world = w
     w.use_nodes = True
     nt = w.node_tree
-    env = nt.nodes.new("ShaderNodeTexEnvironment")
-    name = "kloofendal_48d_partly_cloudy_puresky" if state == "day" else "qwantani_moonrise_puresky"
-    env.image = bpy.data.images.load(os.path.join(ASSETS, "hdri", f"{name}.hdr"))
-    mp = nt.nodes.new("ShaderNodeMapping")
-    mp.inputs["Rotation"].default_value = (0, 0, math.radians(200 if state == "day" else 90))
-    nt.links.new(nt.nodes.new("ShaderNodeTexCoord").outputs["Generated"], mp.inputs["Vector"])
-    nt.links.new(mp.outputs["Vector"], env.inputs["Vector"])
+    coord = nt.nodes.new("ShaderNodeTexCoord").outputs["Generated"]
+    envs = []
+    for name, rot in (("kloofendal_48d_partly_cloudy_puresky", 200), ("qwantani_moonrise_puresky", 90)):
+        env = nt.nodes.new("ShaderNodeTexEnvironment")
+        env.image = bpy.data.images.load(os.path.join(ASSETS, "hdri", f"{name}.hdr"))
+        mp = nt.nodes.new("ShaderNodeMapping")
+        mp.inputs["Rotation"].default_value = (0, 0, math.radians(rot))
+        nt.links.new(coord, mp.inputs["Vector"])
+        nt.links.new(mp.outputs["Vector"], env.inputs["Vector"])
+        envs.append(env)
+    night = nt.nodes.new("ShaderNodeValue")
+    night.name = "Night"
+    sky = nt.nodes.new("ShaderNodeMix")
+    sky.data_type = "RGBA"
+    nt.links.new(night.outputs[0], sky.inputs["Factor"])
+    nt.links.new(envs[0].outputs["Color"], sky.inputs["A"])
+    nt.links.new(envs[1].outputs["Color"], sky.inputs["B"])
+    # At night the moonrise sky still lights the room, but seen directly through
+    # the window it read as daylight. Camera rays see a deep navy version instead.
+    tint = nt.nodes.new("ShaderNodeMix")
+    tint.data_type, tint.blend_type = "RGBA", "MULTIPLY"
+    tint.inputs["Factor"].default_value = 1.0
+    tint.inputs["B"].default_value = (0.06, 0.09, 0.22, 1)
+    nt.links.new(sky.outputs["Result"], tint.inputs["A"])
+    cam_night = nt.nodes.new("ShaderNodeMath")
+    cam_night.operation = "MULTIPLY"
+    nt.links.new(nt.nodes.new("ShaderNodeLightPath").outputs["Is Camera Ray"], cam_night.inputs[0])
+    nt.links.new(night.outputs[0], cam_night.inputs[1])
+    pick = nt.nodes.new("ShaderNodeMix")
+    pick.data_type = "RGBA"
+    nt.links.new(cam_night.outputs[0], pick.inputs["Factor"])
+    nt.links.new(sky.outputs["Result"], pick.inputs["A"])
+    nt.links.new(tint.outputs["Result"], pick.inputs["B"])
     bg = nt.nodes["Background"]
-    bg.inputs["Strength"].default_value = 4.0 if state == "day" else 1.0
-    nt.links.new(env.outputs["Color"], bg.inputs["Color"])
+    nt.links.new(pick.outputs["Result"], bg.inputs["Color"])
+    return dict(world_strength=bg.inputs["Strength"], night=night.outputs[0])
 
 
-def sun(state):
-    """Sun (day) or moon (night) shining in through the right-hand window."""
+def lights():
+    """Sun/moon through the window, plus a soft fill from an implied second
+    window behind the camera."""
     s = bpy.data.lights.new("Sun", "SUN")
-    ob = link(bpy.data.objects.new("Sun", s))
-    if state == "day":
-        s.energy, s.angle, s.color = 7.0, math.radians(0.6), (1.0, 0.88, 0.72)
-        travel = Vector((-0.78, 0.28, -0.42))  # low morning sun raking across the bed
-    else:
-        s.energy, s.angle, s.color = 0.18, math.radians(0.6), (0.5, 0.64, 1.0)
-        travel = Vector((-0.7, 0.1, -0.55))
-    # A sun lamp shines along its local -Z
-    ob.rotation_euler = (-travel.normalized()).to_track_quat("Z", "Y").to_euler()
-
-    # Soft fill from an implied second window behind the camera
+    s.angle = math.radians(0.6)
+    sun = link(bpy.data.objects.new("Sun", s))
     f = bpy.data.lights.new("Fill", "AREA")
     f.shape, f.size, f.size_y = "RECTANGLE", 2.5, 1.4
-    f.energy = 70.0 if state == "day" else 1.2
-    f.color = (0.92, 0.95, 1.0) if state == "day" else (0.45, 0.55, 1.0)
-    fo = link(bpy.data.objects.new("Fill", f))
-    fo.location = (0.2, ROOM["y0"] + 0.1, 1.6)
-    fo.rotation_euler = (math.radians(-90), 0, 0)  # face into the room (+y)
+    fill = link(bpy.data.objects.new("Fill", f))
+    fill.location = (0.2, ROOM["y0"] + 0.1, 1.6)
+    fill.rotation_euler = (math.radians(-90), 0, 0)  # face into the room (+y)
+    return dict(sun=sun, fill=fill)
+
+
+def key(owner, path, frame, interp):
+    if frame is None:
+        return
+    bpy.context.preferences.edit.keyframe_new_interpolation_type = interp
+    owner.keyframe_insert(path, frame=frame)
+
+
+def apply_state(state, refs, frame=None, interp="CONSTANT"):
+    """Set every day/night value; with `frame`, also keyframe them there."""
+    v = STATES[state]
+    M = refs["M"]
+
+    def put(owner, path, value):
+        setattr(owner, path, value)
+        key(owner, path, frame, interp)
+
+    put(refs["world_strength"], "default_value", v["world"])
+    put(refs["night"], "default_value", v["night"])
+    sun = refs["sun"]
+    put(sun.data, "energy", v["sun"])
+    put(sun.data, "color", v["sun_color"])
+    # A sun lamp shines along its local -Z
+    put(sun, "rotation_euler", (-Vector(v["sun_travel"]).normalized()).to_track_quat("Z", "Y").to_euler())
+    put(refs["fill"].data, "energy", v["fill"])
+    put(refs["fill"].data, "color", v["fill_color"])
+    put(refs["lamp_light"], "energy", v["lamp"])
+    put(refs["hall"], "energy", v["hall"])
+    for mat, val in ((M["bulb"], v["bulb"]), (M["screen"], v["screen"])):
+        put(mat.node_tree.nodes["Principled BSDF"].inputs["Emission Strength"], "default_value", val)
+    set_blinds(refs["blinds"], v["blinds"], frame, interp)
+    set_curtains(refs["curtains"], 0.0, frame, interp)
+    put(refs["door"], "rotation_euler", (0, 0, math.radians(-18)))
 
 
 # name: (location, look-at target, focal length mm)
@@ -641,17 +776,6 @@ def camera(name):
     cam.dof.focus_distance = (target - ob.location).length
     cam.dof.aperture_fstop = 5.6
     return ob
-
-
-def apply_state(state, refs):
-    night = state == "night"
-    refs["lamp_light"].energy = 26.0 if night else 0.0
-    refs["M"]["bulb"].node_tree.nodes["Principled BSDF"].inputs["Emission Strength"].default_value = 40.0 if night else 0.0
-    refs["M"]["screen"].node_tree.nodes["Principled BSDF"].inputs["Emission Strength"].default_value = 0.6 if night else 0.0
-    refs["hall"].energy = 0.0
-    refs["door"].rotation_euler = (0, 0, math.radians(-18))
-    set_blinds(refs["blinds"], 12 if not night else 38)
-    set_curtains(refs["curtains"], 0.0)
 
 
 def render_settings(a):
@@ -702,7 +826,7 @@ def materials():
         "sheet": flat("Sheet", (0.9, 0.88, 0.84), 0.8),
         "pillow": pbr("Pillow", "waffle_pique_cotton", scale=3.0, tint=(0.98, 0.95, 0.88), bump=0.1),
         "throw": pbr("Throw", "knitted_fleece", scale=2.0, tint=(0.08, 0.16, 0.34), bump=0.3),
-        "bedframe": flat("BedFrame", (0.17, 0.1, 0.06), 0.45),
+        "bedframe": pbr("BedFrame", "wood_floor", scale=1.5, tint=(0.42, 0.24, 0.13), rough_mult=0.7, bump=0.1),
         "walnut": flat("Walnut", (0.2, 0.11, 0.06), 0.4, coat=0.2),
         "ceramic": flat("Ceramic", (0.04, 0.09, 0.2), 0.15, coat=0.6),
         "shade": linen_shade("Shade"),
@@ -710,14 +834,15 @@ def materials():
         "phone": flat("PhoneBody", (0.02, 0.02, 0.025), 0.15, coat=1.0),
         "screen": emissive("PhoneScreen", (0.55, 0.62, 1.0), 0.0),
         "bookA": flat("BookA", (0.75, 0.2, 0.15), 0.6),
-        "rug": pbr("Rug", "knitted_fleece", scale=1.2, tint=(0.62, 0.4, 0.22), bump=0.4),
+        "rug": pbr("Rug", "knitted_fleece", scale=3.0, tint=(0.72, 0.5, 0.3), bump=0.8),
+        "rugBorder": pbr("RugBorder", "knitted_fleece", scale=3.0, tint=(0.12, 0.17, 0.32), bump=0.8),
         "mat": flat("ArtMat", (0.93, 0.9, 0.84), 0.8),
         "print": image_mat("Print", os.path.join(HERE, "..", "NiteLite", "Assets.xcassets", "AppIcon.appiconset", "icon_512x512@2x.png")),
     }
 
 
-def main():
-    a = args()
+def build(a):
+    """Build the whole scene (both states present) and return handles for animating it."""
     bpy.ops.wm.read_factory_settings(use_empty=True)
     render_settings(a)
     M = materials()
@@ -728,10 +853,15 @@ def main():
     build_bed(M)
     lamp, lamp_light = build_lamp(M)
     build_props(M)
-    world(a.state)
-    sun(a.state)
-    camera(a.cam)
-    apply_state(a.state, dict(M=M, lamp_light=lamp_light, hall=hall, door=hinge, blinds=blinds, curtains=curtains))
+    refs = dict(M=M, lamp_light=lamp_light, hall=hall, door=hinge, blinds=blinds, curtains=curtains)
+    refs.update(world())
+    refs.update(lights())
+    refs["camera"] = camera(a.cam)
+    return refs
+
+
+def render_still(a, refs):
+    apply_state(a.state, refs)
     if a.save:
         bpy.ops.wm.save_as_mainfile(filepath=os.path.join(HERE, "room.blend"))
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
@@ -739,4 +869,6 @@ def main():
     bpy.ops.render.render(write_still=True)
 
 
-main()
+if __name__ == "__main__":
+    a = args()
+    render_still(a, build(a))

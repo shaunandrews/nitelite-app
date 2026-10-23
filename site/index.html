@@ -10,13 +10,22 @@
 <meta property="og:url" content="https://nitelite.space.fast/">
 <meta property="og:title" content="NiteLite: let there be night">
 <meta property="og:description" content="A free macOS menu bar app that switches Light and Dark Mode with a film transition.">
-<meta property="og:image" content="https://nitelite.space.fast/icon-512.png">
+<meta property="og:image" content="https://nitelite.space.fast/room/night.jpg">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" type="image/png" href="icon-64.png">
 <link rel="apple-touch-icon" href="icon-512.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;900&display=swap" rel="stylesheet">
+<link rel="preload" as="image" href="room/day.jpg">
+<link rel="preload" as="image" href="room/night.jpg">
+<script>
+  // Pick the starting theme before paint so the room and page never flash
+  try {
+    const saved = localStorage.getItem("nitelite-theme");
+    if (saved) document.documentElement.dataset.theme = saved;
+  } catch (e) {}
+</script>
 <script type="application/ld+json">
 {"@context":"https://schema.org","@graph":[
  {"@type":"WebSite","name":"NiteLite","url":"https://nitelite.space.fast/"},
@@ -30,57 +39,45 @@
   --gold: #f5c342;
   --cream: #fcf3e3;
   --bg: var(--cream);
-  --surface: #f4e7cf;
   --text: var(--navy);
   --muted: #3d4c60;
   --rule: #d9c8a8;
-  --bar: rgba(252, 243, 227, 0.86);
+  --bar: rgba(252, 243, 227, 0.88);
   --display: "Big Shoulders Display", "Avenir Next Condensed", "Arial Narrow", sans-serif;
   --body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   color-scheme: light;
 }
 :root[data-theme="dark"] {
   --bg: var(--navy);
-  --surface: var(--navy-2);
   --text: var(--cream);
   --muted: #b8c2cf;
   --rule: #2a3d56;
-  --bar: rgba(12, 27, 46, 0.86);
+  --bar: rgba(12, 27, 46, 0.88);
   color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: var(--navy);
-    --surface: var(--navy-2);
     --text: var(--cream);
     --muted: #b8c2cf;
     --rule: #2a3d56;
-    --bar: rgba(12, 27, 46, 0.86);
+    --bar: rgba(12, 27, 46, 0.88);
     color-scheme: dark;
   }
 }
 
 *, *::before, *::after { box-sizing: border-box; }
 html { -webkit-text-size-adjust: 100%; }
-body {
-  margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font: 400 1rem/1.5 var(--body);
-}
+body { margin: 0; background: var(--bg); color: var(--text); font: 400 1rem/1.5 var(--body); }
 a { color: inherit; text-underline-offset: 0.18em; }
 :focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; border-radius: 4px; }
-.skip { position: absolute; left: -9999px; top: 0; padding: 0.5rem 1rem; background: var(--gold); color: var(--navy); z-index: 20; }
+.skip { position: absolute; left: -9999px; top: 0; padding: 0.5rem 1rem; background: var(--gold); color: var(--navy); z-index: 50; }
 .skip:focus { left: 1rem; top: 1rem; }
-.wrap { width: min(100% - 2rem, 68rem); margin-inline: auto; }
+.wrap { width: min(100% - 2rem, 72rem); margin-inline: auto; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
-/* Menu bar replica: the real toggle lives here, like the app */
-.menubar {
-  position: sticky; top: 0; z-index: 10;
-  background: var(--bar);
-  border-bottom: 1px solid var(--rule);
-  font-size: 0.875rem;
-}
+/* Menu bar replica */
+.menubar { position: sticky; top: 0; z-index: 20; background: var(--bar); border-bottom: 1px solid var(--rule); font-size: 0.875rem; }
 @supports (backdrop-filter: blur(1px)) { .menubar { backdrop-filter: saturate(1.4) blur(12px); } }
 .menubar .wrap { display: flex; align-items: center; gap: 1rem; height: 2.5rem; }
 .brand { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; text-decoration: none; }
@@ -88,87 +85,82 @@ a { color: inherit; text-underline-offset: 0.18em; }
 .menubar nav { margin-left: auto; display: flex; align-items: center; gap: 0.25rem; }
 .menubar nav a { padding: 0.25rem 0.5rem; text-decoration: none; border-radius: 4px; }
 .menubar nav a:hover { background: color-mix(in srgb, var(--text) 10%, transparent); }
-.toggle {
-  display: grid; place-items: center;
-  width: 2.25rem; height: 1.75rem;
-  border: 0; border-radius: 5px;
-  background: transparent; color: inherit; cursor: pointer;
-}
+.toggle { display: grid; place-items: center; width: 2.25rem; height: 1.75rem; border: 0; border-radius: 5px; background: transparent; color: inherit; cursor: pointer; }
 .toggle:hover { background: color-mix(in srgb, var(--text) 12%, transparent); }
 .toggle svg { width: 18px; height: 18px; }
-.toggle .moon { display: none; }
-:root[data-theme="dark"] .toggle .sun { display: none; }
-:root[data-theme="dark"] .toggle .moon { display: block; }
+.toggle .moon, .dark-only { display: none; }
+:root[data-theme="dark"] .toggle .sun, :root[data-theme="dark"] .light-only { display: none; }
+:root[data-theme="dark"] .toggle .moon, :root[data-theme="dark"] .dark-only { display: inline; }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .toggle .sun { display: none; }
-  :root:not([data-theme="light"]) .toggle .moon { display: block; }
+  :root:not([data-theme="light"]) .toggle .sun, :root:not([data-theme="light"]) .light-only { display: none; }
+  :root:not([data-theme="light"]) .toggle .moon, :root:not([data-theme="light"]) .dark-only { display: inline; }
 }
 .clock { display: none; font-variant-numeric: tabular-nums; min-width: 4.5rem; text-align: right; }
 @media (min-width: 30rem) { .clock { display: block; } }
 
-/* Hero */
-.hero { padding-block: clamp(3rem, 10vw, 7rem) clamp(3rem, 8vw, 5rem); display: grid; gap: 2.5rem; align-items: center; }
-@media (min-width: 52rem) { .hero { grid-template-columns: 1.4fr 1fr; } }
+/* Intro */
+.intro { padding-block: clamp(2rem, 6vw, 4rem) clamp(1.5rem, 4vw, 2.5rem); display: grid; gap: 1.25rem 3rem; align-items: end; }
+@media (min-width: 56rem) { .intro { grid-template-columns: 1.3fr 1fr; } }
 h1, h2, h3 { font-family: var(--display); font-weight: 900; line-height: 1.05; margin: 0; letter-spacing: 0.005em; }
-h1 { font-size: clamp(3.5rem, 11vw, 7.5rem); }
+h1 { font-size: clamp(3.25rem, 10vw, 7rem); }
 h2 { font-size: clamp(2.25rem, 6vw, 3.5rem); }
 h3 { font-size: 1.75rem; font-weight: 700; }
-.lede { font-size: clamp(1.125rem, 2.2vw, 1.375rem); max-width: 34em; margin: 1.5rem 0 2rem; color: var(--muted); }
-.download {
-  display: inline-flex; align-items: center; gap: 0.6rem;
-  padding: 0.9rem 1.4rem;
-  background: var(--gold); color: var(--navy);
-  font-weight: 650; font-size: 1.0625rem; text-decoration: none;
-  border-radius: 10px;
-  box-shadow: 0 1px 0 rgba(12, 27, 46, 0.25), 0 6px 18px -8px rgba(12, 27, 46, 0.45);
-}
+.lede { font-size: clamp(1.125rem, 2.2vw, 1.3rem); max-width: 32em; margin: 1rem 0 0; color: var(--muted); }
+.download { display: inline-flex; align-items: center; gap: 0.6rem; padding: 0.9rem 1.4rem; background: var(--gold); color: var(--navy); font-weight: 650; font-size: 1.0625rem; text-decoration: none; border-radius: 10px; box-shadow: 0 1px 0 rgba(12, 27, 46, 0.25), 0 6px 18px -8px rgba(12, 27, 46, 0.45); }
 .download:hover { background: #ffd25e; }
 .download svg { width: 20px; height: 20px; }
-.fine { margin: 0.9rem 0 0; font-size: 0.875rem; color: var(--muted); }
-.try { margin: 2rem 0 0; font-size: 1rem; }
-.try kbd, .steps kbd, .notes kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 4px; }
-.icon-hero { justify-self: center; width: min(70vw, 22rem); height: auto; }
-.inline-btn {
-  font: inherit; font-weight: 650; color: inherit;
-  background: none; border: 0; padding: 0;
-  text-decoration: underline; text-underline-offset: 0.18em; text-decoration-color: var(--gold); text-decoration-thickness: 2px;
-  cursor: pointer;
-}
+.fine { margin: 0.75rem 0 0; font-size: 0.875rem; color: var(--muted); }
 
-/* Transitions list */
+/* The room */
+.room { position: relative; background: #05080d; }
+.stage { position: relative; aspect-ratio: 16 / 9; width: 100%; max-height: calc(100svh - 2.5rem); margin-inline: auto; overflow: hidden; }
+@media (min-aspect-ratio: 16 / 9) { .stage { width: calc((100svh - 2.5rem) * 16 / 9); } }
+.stage img, .stage video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
+.stage img.night { opacity: 0; }
+:root[data-theme="dark"] .stage img.night { opacity: 1; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .stage img.night { opacity: 1; } }
+.stage video { opacity: 0; }
+.stage video.on { opacity: 1; }
+.fade { position: absolute; inset: 0; background: #000; opacity: 0; pointer-events: none; transition: opacity 140ms ease-in; }
+.fade.on { opacity: 1; }
+
+.spot {
+  position: absolute; left: calc(var(--x) * 100%); top: calc(var(--y) * 100%);
+  width: 2.75rem; height: 2.75rem; margin: -1.375rem 0 0 -1.375rem;
+  border: 0; padding: 0; background: none; cursor: pointer; color: #fff;
+}
+.spot::before {
+  content: ""; position: absolute; inset: 0.85rem; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.85); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35);
+  transition: transform 160ms ease-out, background-color 160ms;
+}
+.spot:hover::before, .spot:focus-visible::before { transform: scale(1.25); background: rgba(245, 195, 66, 0.55); }
+.spot span {
+  position: absolute; left: 50%; bottom: calc(100% + 0.2rem); transform: translateX(-50%);
+  white-space: nowrap; font: 600 0.8125rem var(--body); color: var(--navy);
+  background: var(--cream); padding: 0.3rem 0.55rem; border-radius: 6px;
+  opacity: 0; pointer-events: none; transition: opacity 120ms;
+}
+.spot:hover span, .spot:focus-visible span { opacity: 1; }
+.stage[aria-busy="true"] .spot { pointer-events: none; opacity: 0; }
+.hint { margin: 0; padding: 0.75rem 1rem; text-align: center; font-size: 0.9375rem; color: #c9d2de; background: #05080d; }
+
+/* Sections */
 section { padding-block: clamp(3rem, 8vw, 5rem); border-top: 1px solid var(--rule); }
 .section-intro { max-width: 36em; color: var(--muted); margin: 1rem 0 2rem; }
 .reel { list-style: none; margin: 0; padding: 0; }
-.reel li {
-  display: grid; grid-template-columns: 1fr auto; gap: 0.25rem 1.5rem; align-items: center;
-  padding: 1.25rem 0; border-bottom: 1px solid var(--rule);
-}
+.reel li { display: grid; grid-template-columns: 1fr auto; gap: 0.25rem 1.5rem; align-items: center; padding: 1.25rem 0; border-bottom: 1px solid var(--rule); }
 .reel p { margin: 0; color: var(--muted); max-width: 40em; grid-column: 1; }
 .reel h3 { grid-column: 1; }
-.play {
-  grid-column: 2; grid-row: 1 / span 2;
-  display: inline-flex; align-items: center; gap: 0.45rem;
-  font: 600 0.9375rem var(--body);
-  padding: 0.6rem 1rem;
-  color: var(--text); background: transparent;
-  border: 1.5px solid var(--text); border-radius: 999px;
-  cursor: pointer;
-}
+.play { grid-column: 2; grid-row: 1 / span 2; display: inline-flex; align-items: center; gap: 0.45rem; font: 600 0.9375rem var(--body); padding: 0.6rem 1rem; color: var(--text); background: transparent; border: 1.5px solid var(--text); border-radius: 999px; cursor: pointer; }
 .play:hover { background: color-mix(in srgb, var(--text) 8%, transparent); }
-.play[aria-pressed="true"] { background: var(--gold); border-color: var(--gold); color: var(--navy); }
 .play svg { width: 14px; height: 14px; }
-
-/* Install */
 .steps { margin: 2rem 0 0; padding-left: 1.4rem; max-width: 40em; }
 .steps li { padding-left: 0.4rem; margin-bottom: 1.1rem; }
 .steps li::marker { font-family: var(--display); font-weight: 900; font-size: 1.4rem; color: var(--gold); }
+kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 4px; }
 .notes { margin-top: 2rem; max-width: 40em; color: var(--muted); }
-
 footer { border-top: 1px solid var(--rule); padding-block: 2rem 3rem; font-size: 0.9375rem; color: var(--muted); }
-
-/* Transition overlay */
-#curtain { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100; }
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -190,50 +182,48 @@ footer { border-top: 1px solid var(--rule); padding-block: 2rem 3rem; font-size:
 </header>
 
 <main id="main">
-  <div class="wrap hero">
+  <div class="wrap intro">
     <div>
       <h1>Let there be night.</h1>
       <p class="lede">NiteLite lives in your Mac's menu bar. Click it and the whole screen cuts to black like the end of a reel, then comes back up in the other mode.</p>
+    </div>
+    <div>
       <a class="download" href="NiteLite.zip" download>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0-5-5m5 5 5-5M4 20h16"/></svg>
         Download NiteLite for Mac
       </a>
       <p class="fine">Free. Version 1.0, 1.8 MB. Needs macOS 13 or later, Apple silicon or Intel.</p>
-      <p class="try">See it on this page: <button class="inline-btn" type="button" data-play>click the <span class="mode-word">sun</span> in the bar up top</button>, or press <kbd>D</kbd>.</p>
     </div>
-    <img class="icon-hero" src="icon-512.png" width="512" height="512" alt="NiteLite icon: a gold camera iris closing around a crescent moon" fetchpriority="high">
+  </div>
+
+  <div class="room" aria-labelledby="room-hint">
+    <div class="stage" id="stage">
+      <img class="day" src="room/day.jpg" width="1600" height="900" alt="A bedroom on a sunny morning: a mustard headboard, a blue lamp on the nightstand, an old TV, a projector on the floor and sun through the blinds." fetchpriority="high">
+      <img class="night" src="room/night.jpg" width="1600" height="900" alt="The same bedroom at night, lit by the bedside lamp and light from the hallway.">
+      <video id="clip" muted playsinline preload="none" aria-hidden="true"></video>
+      <div class="fade" id="fade"></div>
+      <!-- Hotspot positions come from scene/hotspots.py (fractions of the frame) -->
+      <button class="spot" type="button" data-clip="lamp" style="--x:.6906;--y:.5056"><span>Pull the lamp chain</span></button>
+      <button class="spot" type="button" data-clip="curtains" style="--x:.8244;--y:.423"><span>Draw the curtains</span></button>
+      <button class="spot" type="button" data-clip="blinds" style="--x:.9481;--y:.3261"><span>Close the blinds</span></button>
+      <button class="spot" type="button" data-clip="tv" style="--x:.2845;--y:.5449"><span>Switch off the TV</span></button>
+      <button class="spot" type="button" data-clip="projector" style="--x:.2756;--y:.8207"><span>Run the projector</span></button>
+      <button class="spot" type="button" data-clip="door" style="--x:.1609;--y:.4496"><span>Shut the door</span></button>
+      <a class="spot" href="NiteLite.zip" download style="--x:.6893;--y:.5777"><span>Download NiteLite</span></a>
+    </div>
+    <p class="hint" id="room-hint">Click things in the room. Each one is a NiteLite transition.</p>
   </div>
 
   <section id="transitions" aria-labelledby="transitions-title">
     <div class="wrap">
       <h2 id="transitions-title">Pick how the screen cuts to black</h2>
-      <p class="section-intro">Five transitions ship with the app. Play each one on this page; the one you pick becomes what the menu bar button above does. In NiteLite, right-click the menu bar icon to choose.</p>
+      <p class="section-intro">Five transitions ship with the app. In the room above, each one is a thing that makes the dark. In NiteLite, right-click the menu bar icon to choose.</p>
       <ul class="reel">
-        <li>
-          <h3>Classic film iris</h3>
-          <p>The silent-film ending. A circle closes on the middle of the screen, then opens on the other mode.</p>
-          <button class="play" type="button" data-transition="iris" aria-pressed="true"><svg viewBox="0 0 14 14" aria-hidden="true"><path fill="currentColor" d="M3 1.5v11l9.5-5.5z"/></svg>Play<span class="sr-only"> classic film iris</span></button>
-        </li>
-        <li>
-          <h3>Left-right wipe</h3>
-          <p>A soft-edged band of black sweeps in from the left and carries on out the right.</p>
-          <button class="play" type="button" data-transition="wipe" aria-pressed="false"><svg viewBox="0 0 14 14" aria-hidden="true"><path fill="currentColor" d="M3 1.5v11l9.5-5.5z"/></svg>Play<span class="sr-only"> left-right wipe</span></button>
-        </li>
-        <li>
-          <h3>Old TV turn-off</h3>
-          <p>The picture squeezes to a line, shrinks to a glowing dot, and blinks out.</p>
-          <button class="play" type="button" data-transition="tv" aria-pressed="false"><svg viewBox="0 0 14 14" aria-hidden="true"><path fill="currentColor" d="M3 1.5v11l9.5-5.5z"/></svg>Play<span class="sr-only"> old TV turn-off</span></button>
-        </li>
-        <li>
-          <h3>Venetian blinds</h3>
-          <p>Fourteen slats slide shut from alternating sides, top to bottom.</p>
-          <button class="play" type="button" data-transition="blinds" aria-pressed="false"><svg viewBox="0 0 14 14" aria-hidden="true"><path fill="currentColor" d="M3 1.5v11l9.5-5.5z"/></svg>Play<span class="sr-only"> Venetian blinds</span></button>
-        </li>
-        <li>
-          <h3>Curtain call</h3>
-          <p>Two heavy curtains swing shut with a little sway, then part on the other mode.</p>
-          <button class="play" type="button" data-transition="curtain" aria-pressed="false"><svg viewBox="0 0 14 14" aria-hidden="true"><path fill="currentColor" d="M3 1.5v11l9.5-5.5z"/></svg>Play<span class="sr-only"> curtain call</span></button>
-        </li>
+        <li><h3>Classic film iris</h3><p>The silent-film ending. A circle closes on the middle of the screen, then opens on the other mode. In the room: the projector.</p><button class="play" type="button" data-clip="projector"><svg viewBox="0 0 14 14" aria-hidden="true"><path fill="currentColor" d="M3 1.5v11l9.5-5.5z"/></svg>Play<span class="sr-only"> classic film iris</span></button></li>
+        <li><h3>Left-right wipe</h3><p>A soft-edged band of black sweeps across the screen and carries on out. In the room: the door.</p><button class="play" type="button" data-clip="door"><svg viewBox="0 0 14 14" aria-hidden="true"><path fill="currentColor" d="M3 1.5v11l9.5-5.5z"/></svg>Play<span class="sr-only"> left-right wipe</span></button></li>
+        <li><h3>Old TV turn-off</h3><p>The picture squeezes to a line, shrinks to a glowing dot, and blinks out. In the room: the TV.</p><button class="play" type="button" data-clip="tv"><svg viewBox="0 0 14 14" aria-hidden="true"><path fill="currentColor" d="M3 1.5v11l9.5-5.5z"/></svg>Play<span class="sr-only"> old TV turn-off</span></button></li>
+        <li><h3>Venetian blinds</h3><p>Fourteen slats slide shut from alternating sides. In the room: the blinds.</p><button class="play" type="button" data-clip="blinds"><svg viewBox="0 0 14 14" aria-hidden="true"><path fill="currentColor" d="M3 1.5v11l9.5-5.5z"/></svg>Play<span class="sr-only"> Venetian blinds</span></button></li>
+        <li><h3>Curtain call</h3><p>Two heavy curtains swing shut, then part on the other mode. In the room: the curtains.</p><button class="play" type="button" data-clip="curtains"><svg viewBox="0 0 14 14" aria-hidden="true"><path fill="currentColor" d="M3 1.5v11l9.5-5.5z"/></svg>Play<span class="sr-only"> curtain call</span></button></li>
       </ul>
     </div>
   </section>
@@ -253,218 +243,127 @@ footer { border-top: 1px solid var(--rule); padding-block: 2rem 3rem; font-size:
 </main>
 
 <footer>
-  <div class="wrap">Made by <a href="https://shaunandrews.com">Shaun Andrews</a>.</div>
+  <div class="wrap">Made by <a href="https://shaunandrews.com">Shaun Andrews</a>. The room was built and rendered in Blender with free assets from <a href="https://polyhaven.com">Poly Haven</a>.</div>
 </footer>
 
-<canvas id="curtain" aria-hidden="true"></canvas>
 <p class="sr-only" id="status" aria-live="polite"></p>
 
 <script>
 (() => {
   const root = document.documentElement;
-  const canvas = document.getElementById("curtain");
-  const ctx = canvas.getContext("2d");
+  const stage = document.getElementById("stage");
+  const video = document.getElementById("clip");
+  const fade = document.getElementById("fade");
   const toggle = document.getElementById("toggle");
   const status = document.getElementById("status");
   const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
   const systemDark = matchMedia("(prefers-color-scheme: dark)");
-
-  let selected = "iris";
+  const FLIP_AT = 1.0; // seconds: frame 24 of 48, the middle of the black hold
+  const ext = video.canPlayType('video/webm; codecs="vp9"') ? "webm" : "mp4";
   let busy = false;
+  let lastClip = "curtains";
 
   const isDark = () => root.dataset.theme ? root.dataset.theme === "dark" : systemDark.matches;
 
   function syncLabels() {
-    const dark = isDark();
-    toggle.setAttribute("aria-label", dark ? "Switch this page to Light Mode" : "Switch this page to Dark Mode");
-    document.querySelectorAll(".mode-word").forEach(el => { el.textContent = dark ? "moon" : "sun"; });
+    toggle.setAttribute("aria-label", isDark() ? "Switch this page to Light Mode" : "Switch this page to Dark Mode");
   }
   syncLabels();
   systemDark.addEventListener("change", syncLabels);
 
-  // Live clock, like the real menu bar
   const clock = document.getElementById("clock");
   const tick = () => { clock.textContent = new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); };
   tick(); setInterval(tick, 15000);
 
-  // Easing curves matching SwiftUI's .easeIn / .easeOut (cubic-bezier .42,0,1,1 and 0,0,.58,1)
-  function bezier(x1, y1, x2, y2) {
-    const a = (p1, p2) => 1 - 3 * p2 + 3 * p1, b = (p1, p2) => 3 * p2 - 6 * p1, c = p1 => 3 * p1;
-    const at = (t, p1, p2) => ((a(p1, p2) * t + b(p1, p2)) * t + c(p1)) * t;
-    const slope = (t, p1, p2) => 3 * a(p1, p2) * t * t + 2 * b(p1, p2) * t + c(p1);
-    return x => {
-      if (x <= 0) return 0; if (x >= 1) return 1;
-      let t = x;
-      for (let i = 0; i < 8; i++) { const s = slope(t, x1, x2); if (!s) break; t -= (at(t, x1, x2) - x) / s; }
-      return at(t, y1, y2);
-    };
-  }
-  const easeIn = bezier(0.42, 0, 1, 1);
-  const easeOut = bezier(0, 0, 0.58, 1);
-  const clamp01 = v => Math.max(0, Math.min(1, v));
-  const seg = (t, start, dur) => clamp01((t - start) / dur);
-
-  // Damped spring step response, matching SwiftUI .spring(response:dampingFraction:)
-  function spring(t, response, damping) {
-    const wn = 2 * Math.PI / response, wd = wn * Math.sqrt(1 - damping * damping);
-    return 1 - Math.exp(-damping * wn * t) * (Math.cos(wd * t) + (damping * wn / wd) * Math.sin(wd * t));
-  }
-
-  // Each transition: cover (seconds until fully black), reveal (seconds), draw(phase, t)
-  const transitions = {
-    iris: {
-      cover: 0.18, reveal: 0.2,
-      draw(c, w, h, phase, t, toDark) {
-        const maxR = Math.hypot(w, h) / 2;
-        if (toDark) {
-          if (phase === "cover") holeBlack(c, w, h, (1 - easeIn(seg(t, 0, 0.18))) * maxR);
-          else { c.globalAlpha = 1 - easeOut(seg(t, 0, 0.12)); black(c, w, h); }
-        } else {
-          if (phase === "cover") { c.globalAlpha = easeIn(seg(t, 0, 0.12)); black(c, w, h); }
-          else holeBlack(c, w, h, easeOut(seg(t, 0, 0.2)) * maxR);
-        }
-      }
-    },
-    wipe: {
-      cover: 0.2, reveal: 0.25,
-      draw(c, w, h, phase, t) {
-        const p = phase === "cover" ? easeIn(seg(t, 0, 0.2)) * 0.5 : 0.5 + easeOut(seg(t, 0, 0.25)) * 0.5;
-        const feather = w * 0.1, band = w + feather * 2, x = -band + (w + band) * p;
-        const g = c.createLinearGradient(x, 0, x + band, 0);
-        g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(feather / band, "#000");
-        g.addColorStop(1 - feather / band, "#000"); g.addColorStop(1, "rgba(0,0,0,0)");
-        c.fillStyle = g; c.fillRect(x, 0, band, h);
-      }
-    },
-    tv: {
-      cover: 0.23, reveal: 0.19,
-      draw(c, w, h, phase, t) {
-        let sx, sy, dot;
-        if (phase === "cover") {
-          sy = 1 - easeIn(seg(t, 0, 0.1)) * 0.995;
-          sx = 1 - easeIn(seg(t, 0.1, 0.08));
-          dot = t < 0.18 ? easeIn(seg(t, 0.1, 0.04)) : 1 - easeOut(seg(t, 0.18, 0.05));
-        } else {
-          dot = t < 0.03 ? 0.8 * easeOut(seg(t, 0, 0.03)) : 0.8 * (1 - easeOut(seg(t, 0.03, 0.06)));
-          sx = easeOut(seg(t, 0.03, 0.06));
-          sy = 0.005 + easeOut(seg(t, 0.09, 0.1)) * 0.995;
-        }
-        black(c, w, h);
-        c.globalCompositeOperation = "destination-out";
-        c.fillRect((w - w * sx) / 2, (h - h * sy) / 2, w * sx, h * sy);
-        c.globalCompositeOperation = "source-over";
-        if (dot > 0) {
-          const g = c.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, 10);
-          g.addColorStop(0, `rgba(255,255,255,${dot})`); g.addColorStop(1, "rgba(255,255,255,0)");
-          c.fillStyle = g; c.fillRect(w / 2 - 12, h / 2 - 8, 24, 16);
-        }
-      }
-    },
-    blinds: {
-      cover: 0.25, reveal: 0.28,
-      draw(c, w, h, phase, t) {
-        const p = phase === "cover" ? easeIn(seg(t, 0, 0.25)) : 1 - easeOut(seg(t, 0, 0.28));
-        const count = 14, stagger = 0.02, travel = 1 - stagger * (count - 1), sh = h / count;
-        c.fillStyle = "#000";
-        for (let i = 0; i < count; i++) {
-          const a = clamp01((p - i * stagger) / travel);
-          const off = w * (1 - a) * (i % 2 === 0 ? -1 : 1);
-          c.fillRect(off, i * sh, w, sh + 1);
-        }
-      }
-    },
-    curtain: {
-      cover: 0.42, reveal: 0.6,
-      draw(c, w, h, phase, t) {
-        let p, wave;
-        if (phase === "cover") { p = spring(t, 0.7, 0.75); wave = easeOut(clamp01(t / 0.8)) * Math.PI * 2; }
-        else { p = 1 - spring(t, 0.6, 0.7); wave = Math.PI * 2 + easeIn(clamp01(t / 0.7)) * Math.PI * 2; }
-        drawCurtain(c, w, h, p, wave, true);
-        drawCurtain(c, w, h, p, wave + Math.PI, false);
-      }
-    }
-  };
-
-  function black(c, w, h) { c.fillStyle = "#000"; c.fillRect(0, 0, w, h); }
-  function holeBlack(c, w, h, r) {
-    black(c, w, h);
-    if (r <= 0) return;
-    c.globalCompositeOperation = "destination-out";
-    c.beginPath(); c.arc(w / 2, h / 2, r, 0, Math.PI * 2); c.fill();
-    c.globalCompositeOperation = "source-over";
-  }
-  // Port of CurtainShape: a panel with a wavy leading edge that reads as fabric folds
-  function drawCurtain(c, w, h, p, wave, left) {
-    const cw = w / 2 + 20, waves = 8, amp = 15, seg = h / waves;
-    const lead = left ? -cw + (cw + w / 2) * p : w + cw - (cw + w / 2) * p;
-    const trail = left ? lead - cw : lead + cw;
-    c.beginPath(); c.moveTo(trail, 0); c.lineTo(lead, 0);
-    for (let i = 0; i < waves; i++) {
-      const off = Math.sin(wave + i * 0.5) * amp * (1 + 0.3 * Math.sin(i * 1.7)) * (left ? -1 : 1);
-      c.quadraticCurveTo(lead + off, (i + 0.5) * seg, lead, (i + 1) * seg);
-    }
-    c.lineTo(trail, h); c.closePath();
-    c.fillStyle = "#000"; c.fill();
-  }
-
-  function fit() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
-    canvas.width = Math.round(innerWidth * dpr); canvas.height = Math.round(innerHeight * dpr);
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }
-
   function flip() {
     const next = isDark() ? "light" : "dark";
     root.dataset.theme = next;
+    try { localStorage.setItem("nitelite-theme", next); } catch (e) {}
     syncLabels();
-    status.textContent = next === "dark" ? "Dark Mode" : "Light Mode";
+    status.textContent = next === "dark" ? "Night. Dark Mode." : "Morning. Light Mode.";
   }
 
-  const HOLD = 0.12; // a beat on black, like the app's hold while macOS repaints
+  const src = (name, toNight) => `room/${name}-${toNight ? "night" : "day"}.${ext}`;
 
-  function play(name) {
+  // Warm the cache for a clip when someone shows interest in it
+  const warmed = new Set();
+  function warm(name) {
+    if (name === "lamp" || !name) return;
+    const url = src(name, !isDark());
+    if (warmed.has(url)) return;
+    warmed.add(url);
+    fetch(url).catch(() => warmed.delete(url));
+  }
+
+  function setBusy(on) {
+    busy = on;
+    stage.setAttribute("aria-busy", String(on));
+  }
+
+  // The lamp chain: a quick flick through black, no clip
+  function flick() {
+    setBusy(true);
+    fade.classList.add("on");
+    setTimeout(() => {
+      flip();
+      fade.style.transitionDuration = "320ms";
+      fade.classList.remove("on");
+      setTimeout(() => { fade.style.transitionDuration = ""; setBusy(false); }, 340);
+    }, reduceMotion.matches ? 0 : 160);
+  }
+
+  async function play(name) {
     if (busy) return;
-    const tr = transitions[name];
-    if (!tr) return;
-    if (reduceMotion.matches) { flip(); return; }
-    busy = true;
-    fit();
-    const toDark = !isDark();
-    const w = innerWidth, h = innerHeight;
+    if (name === "lamp" || reduceMotion.matches) { flick(); return; }
+    lastClip = name;
+    setBusy(true);
+    const toNight = !isDark();
     let flipped = false;
-    const start = performance.now();
-    const frame = now => {
-      const t = (now - start) / 1000;
-      ctx.save(); ctx.clearRect(0, 0, w, h);
-      if (t < tr.cover + HOLD) {
-        tr.draw(ctx, w, h, "cover", Math.min(t, tr.cover + HOLD), toDark);
-        if (!flipped && t >= tr.cover) { flipped = true; flip(); }
-        ctx.restore();
-        requestAnimationFrame(frame);
-      } else if (t < tr.cover + HOLD + tr.reveal) {
-        tr.draw(ctx, w, h, "reveal", t - tr.cover - HOLD, toDark);
-        ctx.restore();
-        requestAnimationFrame(frame);
-      } else {
-        ctx.restore(); ctx.clearRect(0, 0, w, h);
-        busy = false;
-      }
+    video.src = src(name, toNight);
+    const done = () => {
+      if (!flipped) flip();
+      video.classList.remove("on");
+      setBusy(false);
     };
-    requestAnimationFrame(frame);
+    video.onended = done;
+    video.onerror = () => { flick(); setBusy(false); };
+    try {
+      await video.play();
+    } catch (e) {
+      flick();
+      return;
+    }
+    video.classList.add("on");
+    const watch = () => {
+      if (!busy) return;
+      if (!flipped && video.currentTime >= FLIP_AT) { flipped = true; flip(); }
+      requestAnimationFrame(watch);
+    };
+    requestAnimationFrame(watch);
   }
 
-  function select(name) {
-    selected = name;
-    document.querySelectorAll("[data-transition]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.transition === name)));
+  function playInRoom(name) {
+    const r = stage.getBoundingClientRect();
+    const visible = r.top >= 0 && r.bottom <= innerHeight + 1;
+    if (!visible) {
+      stage.scrollIntoView({ behavior: reduceMotion.matches ? "auto" : "smooth", block: "center" });
+      setTimeout(() => play(name), reduceMotion.matches ? 0 : 450);
+    } else {
+      play(name);
+    }
   }
 
-  toggle.addEventListener("click", () => play(selected));
-  document.querySelectorAll("[data-play]").forEach(b => b.addEventListener("click", () => play(selected)));
-  document.querySelectorAll("[data-transition]").forEach(b => b.addEventListener("click", () => { select(b.dataset.transition); play(b.dataset.transition); }));
+  document.querySelectorAll("[data-clip]").forEach(el => {
+    el.addEventListener("pointerenter", () => warm(el.dataset.clip));
+    el.addEventListener("focus", () => warm(el.dataset.clip));
+    el.addEventListener("click", () => (el.classList.contains("play") ? playInRoom : play)(el.dataset.clip));
+  });
+  toggle.addEventListener("click", () => playInRoom(lastClip));
+  toggle.addEventListener("pointerenter", () => warm(lastClip));
   document.addEventListener("keydown", e => {
     if (e.key.toLowerCase() !== "d" || e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.target.closest("input, textarea, select, [contenteditable]")) return;
-    play(selected);
+    play(lastClip);
   });
 })();
 </script>

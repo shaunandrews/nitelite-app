@@ -64,6 +64,20 @@ sf publish site       # publishes a new version to the same space
 - When the app version changes, update the version and size in `site/index.html` (hero text and the JSON-LD block).
 - Public access is a Spacefast grant on `/**`. A `/*` pattern does not cover the homepage.
 
+### The bedroom scene
+The page's hero is a 3D bedroom rendered in Blender (`scene/`). Light mode is a sunny morning; dark mode is night with the bedside lamp on. Each NiteLite transition is an object in the room: curtains, blinds, the TV, the floor projector (iris) and the door (wipe). Clicking one plays a short clip, and the page flips theme at its black frame.
+
+```bash
+python3 -I scene/fetch_assets.py   # CC0 models, textures and skies from Poly Haven (~150 MB, gitignored)
+scene/render_clips.sh              # renders all 5 clips (~30 min on an M4 Pro), then runs scene/encode.sh
+```
+
+- `scene/build_scene.py` builds the room. Render a still with `--state day|night --cam wide|corner|nightstand|low`.
+- `scene/animate.py` keys one clip: close → black → swap day/night → open. Every clip is symmetric, so `scene/encode.sh` makes the night → day video by reversing the frames.
+- `scene/encode.sh` writes `site/room/` (MP4 + WebM per direction, plus `day.jpg`/`night.jpg` from the first and last frames). It's generated and gitignored, like the zip.
+- `scene/hotspots.py` projects each object into the camera and writes `site/room/hotspots.json`. Copy the numbers into the `--x`/`--y` of the hotspots in `site/index.html` if the camera or layout changes.
+- The duvet and throw are cloth simulations, cached in `scene/cache/`. Delete it after changing the bed to re-simulate.
+
 ### SEO files
 `robots.txt`, `sitemap.xml`, `404.html`, and the canonical/Open Graph URLs in `index.html` all point at `https://nitelite.space.fast/`. Update them together if the domain changes.
 
@@ -119,6 +133,7 @@ The marketing materials demonstrate the smooth animation and instant dark mode s
 ```
 build.sh                         # Build / install / package script
 scripts/measure-toggle.swift     # Screen-recording timing harness
+scene/                           # Blender bedroom for the website (build, animate, encode)
 site/                            # Download page (nitelite.space.fast)
 NiteLite/
 ├── NiteLiteApp.swift            # Main app entry point

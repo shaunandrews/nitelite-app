@@ -127,3 +127,6 @@ scene/assets/
 scene/renders/
 *.blend1
 scene/room.blend
+scene/cache/
+site/room/
+__pycache__/

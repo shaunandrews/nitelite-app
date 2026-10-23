@@ -17,14 +17,18 @@ API = "https://api.polyhaven.com/files/"
 UA = {"User-Agent": "NiteLite-scene/1.0"}
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets")
 
-MODELS = [
-    "painted_wooden_nightstand",
-    "alarm_clock_01",
-    "Television_01",
-    "filmstrip_projector_8mm",
-    "potted_plant_02",
-    "standing_picture_frame_01",
-]
+# model id -> resolution (big outdoor models at 1k; they're only seen through the window)
+MODELS = {
+    "painted_wooden_nightstand": "2k",
+    "alarm_clock_01": "2k",
+    "Television_01": "2k",
+    "filmstrip_projector_8mm": "2k",
+    "potted_plant_02": "2k",
+    "standing_picture_frame_01": "2k",
+    "island_tree_02": "1k",
+    "shrub_01": "1k",
+    "shrub_04": "1k",
+}
 # texture id -> maps to fetch
 TEXTURES = {
     "wood_floor": ["Diffuse", "nor_gl", "Rough"],
@@ -57,9 +61,9 @@ def fetch(url, dest, md5=None):
 
 
 def main():
-    for m in MODELS:
+    for m, res in MODELS.items():
         print("model", m)
-        g = get_json(m)["gltf"][RES]["gltf"]
+        g = get_json(m)["gltf"][res]["gltf"]
         base = os.path.join(ROOT, "models", m)
         fetch(g["url"], os.path.join(base, f"{m}.gltf"), g["md5"])
         for rel, info in g["include"].items():
