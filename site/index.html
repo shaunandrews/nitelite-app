@@ -143,6 +143,9 @@ h3 { font-size: 1.75rem; font-weight: 700; }
 }
 .spot:hover span, .spot:focus-visible span { opacity: 1; }
 .stage[aria-busy="true"] .spot { pointer-events: none; opacity: 0; }
+/* The phone sits right under the lamp chain; on small screens the Download button above covers it */
+.spot.phone { display: none; }
+@media (min-width: 40rem) { .spot.phone { display: block; } }
 .hint { margin: 0; padding: 0.75rem 1rem; text-align: center; font-size: 0.9375rem; color: #c9d2de; background: #05080d; }
 
 /* Sections */
@@ -209,7 +212,7 @@ footer { border-top: 1px solid var(--rule); padding-block: 2rem 3rem; font-size:
       <button class="spot" type="button" data-clip="tv" style="--x:.2845;--y:.5449"><span>Switch off the TV</span></button>
       <button class="spot" type="button" data-clip="projector" style="--x:.2756;--y:.8207"><span>Run the projector</span></button>
       <button class="spot" type="button" data-clip="door" style="--x:.1609;--y:.4496"><span>Shut the door</span></button>
-      <a class="spot" href="NiteLite.zip" download style="--x:.6893;--y:.5777"><span>Download NiteLite</span></a>
+      <a class="spot phone" href="NiteLite.zip" download style="--x:.6893;--y:.5777"><span>Download NiteLite</span></a>
     </div>
     <p class="hint" id="room-hint">Click things in the room. Each one is a NiteLite transition.</p>
   </div>

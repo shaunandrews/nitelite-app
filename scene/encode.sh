@@ -31,7 +31,7 @@ for dir in "$SRC"/*/; do
             -c:v libx264 -crf 22 -preset slow -pix_fmt yuv420p -movflags +faststart -an \
             "$OUT/$clip-$dir_name.mp4"
         ffmpeg -loglevel error -y -framerate 24 -i "$dir%04d.png" -vf "$vf" \
-            -c:v libvpx-vp9 -crf 34 -b:v 0 -row-mt 1 -an \
+            -c:v libvpx-vp9 -crf 34 -b:v 0 -row-mt 1 -pix_fmt yuv420p -an \
             "$OUT/$clip-$dir_name.webm"
     done
 done
