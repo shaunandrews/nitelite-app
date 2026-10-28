@@ -151,7 +151,7 @@ It needs Screen Recording and Accessibility permission for your terminal app. Ea
 | Wipe | band 0 → 0.5, easeIn 0.2s | 0.23s | band 0.5 → 1, easeOut 0.25s | Feathered band; 0 = off-screen left, 0.5 = covering, 1 = off-screen right |
 | Old TV | squeeze Y (0.1s), then X (0.08s), dot glow | 0.26s | dot, expand X (0.06s), expand Y (0.1s) | |
 | Blinds | 14 slats, 0.02 stagger, easeIn 0.25s | 0.28s | easeOut 0.28s | Every slat lands exactly at progress 1 |
-| Curtain | spring (response 0.7, damping 0.75) | 0.45s | spring (0.6, 0.7) over 0.6s | Spring first reaches center at ~0.41s and stays closed through its overshoot |
+| Curtain | `CurtainCall` spring (response 0.75, damping 0.86), hem trails 60ms | 0.65s | spring (0.8, 0.86) over 0.85s | Velvet curtains anchored at the sides with pleats; drawn per frame in a `Canvas` from the same math the website uses |
 
 Add the toggle time, the AppleScript call, and the 400ms hold, then the reveal: a full toggle takes about a second.
 

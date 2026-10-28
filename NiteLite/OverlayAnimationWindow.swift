@@ -80,89 +80,75 @@ class OverlayAnimationWindow: NSWindow {
     }
 }
 
-/// A curtain shape with wavy leading edge to simulate fabric folds
-/// The waves animate based on progress to create cloth-like motion
-struct CurtainShape: Shape {
-    var progress: CGFloat // 0 = off-screen, 1 = at center
-    var wavePhase: CGFloat // Animates to create rippling effect
-    let isLeftCurtain: Bool
-    let screenWidth: CGFloat
-    let screenHeight: CGFloat
+/// Curtain Call: two velvet curtains anchored at the screen's sides. Only the
+/// leading edge travels, so nothing behind them shows at the edges, and the hem
+/// trails the top a little like real fabric. Pleats bunch up while gathered and
+/// spread as the curtain draws. The website's canvas port (`drawVelvet` in
+/// site/index.html) uses the same numbers; change both together.
+enum CurtainCall {
+    static let closeResponse = 0.75
+    static let openResponse = 0.8
+    static let damping = 0.86
+    static let overlap: CGFloat = 12          // each curtain reaches this far past centre
+    static let hemLag: TimeInterval = 0.06    // seconds the hem trails the top
+    static let pleats = 9
+    static let cover: TimeInterval = 0.62     // both curtains meet, hem included
+    static let reveal: TimeInterval = 0.85    // back at the sides
 
-    // Number of wave peaks on the leading edge
-    let waveCount: Int = 8
-    // Amplitude of the waves (how deep the folds are)
-    let waveAmplitude: CGFloat = 15
-
-    var animatableData: AnimatablePair<CGFloat, CGFloat> {
-        get { AnimatablePair(progress, wavePhase) }
-        set {
-            progress = newValue.first
-            wavePhase = newValue.second
-        }
+    /// Step response of SwiftUI's .spring(response:dampingFraction:), 0 → 1.
+    static func spring(_ t: TimeInterval, response: Double) -> CGFloat {
+        guard t > 0 else { return 0 }
+        let wn = 2 * Double.pi / response
+        let wd = wn * (1 - damping * damping).squareRoot()
+        return CGFloat(1 - exp(-damping * wn * t) * (cos(wd * t) + (damping * wn / wd) * sin(wd * t)))
     }
 
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
+    /// How closed the curtains are (0 open, 1 closed), `lag` seconds behind the top.
+    static func closed(at t: TimeInterval, revealStart: TimeInterval?, lag: TimeInterval) -> CGFloat {
+        if let r = revealStart { return 1 - spring(t - r - lag, response: openResponse) }
+        return spring(t - lag, response: closeResponse)
+    }
 
-        let curtainWidth = screenWidth / 2 + 20 // Extra width for overlap
+    static func draw(_ context: GraphicsContext, size: CGSize, t: TimeInterval, revealStart: TimeInterval?) {
+        let reach = size.width / 2 + overlap
+        for left in [true, false] {
+            let outer: CGFloat = left ? -40 : size.width + 40
+            var path = Path()
+            path.move(to: CGPoint(x: outer, y: 0))
+            let steps = 24
+            for i in 0...steps {
+                let v = Double(i) / Double(steps)
+                let p = closed(at: t, revealStart: revealStart, lag: hemLag * pow(v, 1.4))
+                let sway = sin(v * .pi * 1.3 + t * 6 + (left ? 0 : .pi)) * (2 + 8 * Double(1 - p))
+                let x = reach * p + CGFloat(sway)
+                path.addLine(to: CGPoint(x: left ? x : size.width - x, y: CGFloat(v) * size.height))
+            }
+            path.addLine(to: CGPoint(x: outer, y: size.height))
+            path.closeSubpath()
 
-        // Calculate the curtain's position based on progress
-        // At progress 0, curtain is fully off-screen
-        // At progress 1, curtain's leading edge is at center
-        let leadingEdgeX: CGFloat
-        if isLeftCurtain {
-            // Left curtain: leading edge moves from left edge toward center
-            leadingEdgeX = -curtainWidth + (curtainWidth + screenWidth / 2) * progress
-        } else {
-            // Right curtain: leading edge moves from right edge toward center
-            leadingEdgeX = screenWidth + curtainWidth - (curtainWidth + screenWidth / 2) * progress
+            // Pleats: light and dark bands from the side to the leading edge
+            let lead = max(1, reach * closed(at: t, revealStart: revealStart, lag: 0))
+            var stops: [Gradient.Stop] = []
+            for i in 0..<pleats {
+                let f = CGFloat(i) / CGFloat(pleats), w = 1 / CGFloat(pleats)
+                stops.append(.init(color: Color(white: 0.012), location: f))
+                stops.append(.init(color: Color(white: 0.11), location: f + w * 0.45))
+                stops.append(.init(color: Color(white: 0.04), location: f + w * 0.8))
+            }
+            stops.append(.init(color: .black, location: 1))
+            context.fill(path, with: .linearGradient(
+                Gradient(stops: stops),
+                startPoint: CGPoint(x: left ? 0 : size.width, y: 0),
+                endPoint: CGPoint(x: left ? lead : size.width - lead, y: 0)))
+
+            // Shadow under the rod
+            var top = context
+            top.clip(to: path)
+            let shade = size.height * 0.12
+            top.fill(Path(CGRect(x: 0, y: 0, width: size.width, height: shade)), with: .linearGradient(
+                Gradient(colors: [Color.black.opacity(0.7), .clear]),
+                startPoint: .zero, endPoint: CGPoint(x: 0, y: shade)))
         }
-
-        // The trailing edge (attached to the "curtain rod")
-        let trailingEdgeX = isLeftCurtain ? leadingEdgeX - curtainWidth : leadingEdgeX + curtainWidth
-
-        // Start from top corner (trailing edge side), then top edge to leading edge
-        path.move(to: CGPoint(x: trailingEdgeX, y: 0))
-        path.addLine(to: CGPoint(x: leadingEdgeX, y: 0))
-
-        // Create wavy leading edge going down
-        // The waves simulate hanging fabric folds
-        let segmentHeight = screenHeight / CGFloat(waveCount)
-
-        for i in 0..<waveCount {
-            let startY = CGFloat(i) * segmentHeight
-            let endY = CGFloat(i + 1) * segmentHeight
-            let midY = (startY + endY) / 2
-
-            // Calculate wave offset with phase animation
-            // The phase creates the rippling motion as curtain moves
-            let phaseOffset = wavePhase + CGFloat(i) * 0.5
-            let waveOffset = sin(phaseOffset) * waveAmplitude
-
-            // Vary wave depth based on position for more natural look
-            let depthVariation = 1.0 + 0.3 * sin(CGFloat(i) * 1.7)
-            let adjustedWaveOffset = waveOffset * depthVariation
-
-            // Direction of wave bulge (into the curtain for left, out for right)
-            let bulgeDirection: CGFloat = isLeftCurtain ? -1 : 1
-
-            // Control point for the curve (creates the wave bulge)
-            let controlX = leadingEdgeX + adjustedWaveOffset * bulgeDirection
-
-            path.addQuadCurve(
-                to: CGPoint(x: leadingEdgeX, y: endY),
-                control: CGPoint(x: controlX, y: midY)
-            )
-        }
-
-        // Bottom edge back to trailing side
-        path.addLine(to: CGPoint(x: trailingEdgeX, y: screenHeight))
-
-        // Close the path (trailing edge going up)
-        path.closeSubpath()
-
-        return path
     }
 }
 
@@ -187,8 +173,10 @@ struct OverlayAnimationView: View {
     @State private var blindsProgress: CGFloat = 0.0
 
     // Curtain animation state
-    @State private var curtainProgress: CGFloat = 0.0
-    @State private var curtainWavePhase: CGFloat = 0.0
+    @State private var curtainStart: Date?
+    @State private var curtainRevealAt: TimeInterval?
+    @State private var curtainNow = Date()
+    private let frameTimer = Timer.publish(every: 1.0 / 120.0, on: .main, in: .common).autoconnect()
 
     var body: some View {
         Group {
@@ -508,61 +496,26 @@ struct OverlayAnimationView: View {
     }
 
     // MARK: - Curtain Animation
-    @ViewBuilder
+    // Drawn every frame from CurtainCall's spring math (not SwiftUI animations),
+    // so the website can reproduce it exactly. A plain 120 Hz timer drives the
+    // redraws; it's dependable in this borderless overlay window.
     private var curtainAnimationView: some View {
-        ZStack {
-            // Left curtain with cloth physics
-            CurtainShape(
-                progress: curtainProgress,
-                wavePhase: curtainWavePhase,
-                isLeftCurtain: true,
-                screenWidth: screenSize.width,
-                screenHeight: screenSize.height
-            )
-            .fill(Color.black)
-
-            // Right curtain with cloth physics
-            CurtainShape(
-                progress: curtainProgress,
-                wavePhase: curtainWavePhase + .pi, // Offset phase for variety
-                isLeftCurtain: false,
-                screenWidth: screenSize.width,
-                screenHeight: screenSize.height
-            )
-            .fill(Color.black)
+        Canvas { context, size in
+            guard let start = curtainStart else { return }
+            CurtainCall.draw(context, size: size, t: curtainNow.timeIntervalSince(start), revealStart: curtainRevealAt)
         }
         .frame(width: screenSize.width, height: screenSize.height)
+        .onReceive(frameTimer) { curtainNow = $0 }
     }
 
     private func startCurtainAnimation(expectedDarkMode: Bool) {
-        curtainProgress = 0.0
-        curtainWavePhase = 0.0
-
-        // Close curtains with spring animation - slow and dramatic
-        withAnimation(.spring(response: 0.7, dampingFraction: 0.75, blendDuration: 0)) {
-            curtainProgress = 1.0
-        }
-
-        // Animate wave phase to create rippling cloth effect during close
-        withAnimation(.easeOut(duration: 0.8)) {
-            curtainWavePhase = .pi * 2 // One full ripple cycle
-        }
-
-        // This spring first reaches the center at ~0.41s and stays closed through
-        // its small overshoot, so the toggle can fire then instead of waiting it out.
-        toggleWhenCovered(after: 0.42, expectedDarkMode: expectedDarkMode) {
-            // Open curtains with spring for dramatic reveal
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.7, blendDuration: 0)) {
-                self.curtainProgress = 0.0
-            }
-
-            // Continue wave animation during open
-            withAnimation(.easeIn(duration: 0.7)) {
-                self.curtainWavePhase = .pi * 4 // Another cycle of ripples
-            }
-
-            // Curtains are off-screen by now, so no fade needed
-            self.after(0.6) { self.onComplete() }
+        let start = Date()
+        curtainStart = start
+        curtainNow = start
+        curtainRevealAt = nil
+        toggleWhenCovered(after: CurtainCall.cover, expectedDarkMode: expectedDarkMode) {
+            self.curtainRevealAt = Date().timeIntervalSince(start)
+            self.after(CurtainCall.reveal) { self.onComplete() }
         }
     }
 

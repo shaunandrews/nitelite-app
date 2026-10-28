@@ -47,7 +47,7 @@ Five animation styles selectable via right-click context menu (`AnimationType`, 
 - **Left-Right Wipe** - Gradient mask wipe across screen
 - **Old TV Turn-off** - Screen squeezes to a line, then a glowing dot
 - **Venetian Blinds** - Staggered horizontal slats slide in from alternating sides
-- **Curtain Call** - Two `CurtainShape` curtains with wavy, spring-animated edges
+- **Curtain Call** - `CurtainCall`: velvet curtains anchored at the sides (only the leading edge moves, so nothing shows at the edges), pleats that spread as they draw, hem trailing the top. Drawn per frame in a `TimelineView` + `Canvas` from explicit spring math so `site/index.html` can match it exactly
 
 Every style goes through `toggleWhenCovered()`: cover eases in, the toggle fires one frame after full black, then the view holds on black for `repaintSettle` (400ms) after the appearance change is detected, then the reveal eases out. That hold is load-bearing: other apps repaint 70–500ms after macOS reports the change, and revealing sooner shows the old theme flipping after the transition. Don't shorten it without re-measuring with `scripts/measure-toggle.swift` (see `docs/04-animation-system.md`). The dark mode toggle fires at `onBlackReached` callback (when screen is fully black), then animation reveals the new appearance.
 
