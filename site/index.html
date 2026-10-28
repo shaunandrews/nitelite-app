@@ -14,9 +14,6 @@
 <meta name="color-scheme" content="light dark">
 <link rel="icon" type="image/png" href="icon-64.png">
 <link rel="apple-touch-icon" href="icon-512.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@800;900&display=swap" rel="stylesheet">
 <script>
   // Pick the theme before paint so the page never flashes the wrong mode
   try {
@@ -32,27 +29,25 @@
 </script>
 <style>
 :root {
-  --navy: #0c1b2e;
-  --gold: #f5c342;
-  --cream: #fcf3e3;
-  --bg: var(--cream);
-  --text: var(--navy);
-  --muted: #4a5869;
-  --line: #e2d4b8;
-  --display: "Big Shoulders Display", "Avenir Next Condensed", "Arial Narrow", sans-serif;
-  --body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --neon: #ccff00;            /* the one accent; swap here */
+  --paper: #fafaf8;
+  --ink: #0b0b0b;
+  --muted: #6b6b6b;
+  --line: #d9d9d6;
+  --glow: none;
+  --body: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
   color-scheme: light;
 }
 :root[data-theme="dark"] {
-  --bg: var(--navy);
-  --text: var(--cream);
-  --muted: #a9b5c4;
-  --line: #24374f;
+  --paper: #111111; --ink: #f4f4f1; --muted: #8e8e8a; --line: #2c2c2a;
+  --glow: drop-shadow(0 0 6px var(--neon)) drop-shadow(0 0 18px color-mix(in srgb, var(--neon) 55%, transparent));
   color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: var(--navy); --text: var(--cream); --muted: #a9b5c4; --line: #24374f;
+    --paper: #111111; --ink: #f4f4f1; --muted: #8e8e8a; --line: #2c2c2a;
+    --glow: drop-shadow(0 0 6px var(--neon)) drop-shadow(0 0 18px color-mix(in srgb, var(--neon) 55%, transparent));
     color-scheme: dark;
   }
 }
@@ -63,102 +58,109 @@ body {
   min-height: 100svh;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--paper);
+  color: var(--ink);
   font: 400 1rem/1.5 var(--body);
+  -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
-a { color: inherit; text-underline-offset: 0.18em; }
+a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
 button { font: inherit; color: inherit; }
-:focus-visible { outline: 3px solid var(--gold); outline-offset: 4px; border-radius: 6px; }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; border-radius: 4px; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* Top and bottom rails */
-.rail { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: clamp(0.75rem, 2.5vh, 1.5rem) clamp(1rem, 4vw, 2.5rem); font-size: 0.9375rem; }
-.brand { display: flex; align-items: center; gap: 0.55rem; font-weight: 650; text-decoration: none; }
-.brand img { width: 28px; height: 28px; }
-.download { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.6rem 1rem; background: var(--gold); color: var(--navy); font-weight: 650; text-decoration: none; border-radius: 10px; box-shadow: 0 1px 0 rgba(12, 27, 46, 0.2), 0 6px 16px -8px rgba(12, 27, 46, 0.5); white-space: nowrap; }
-.download:hover { background: #ffd25e; }
-.download svg { width: 18px; height: 18px; }
+.rail { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: clamp(0.9rem, 2.6vh, 1.6rem) clamp(1rem, 4vw, 2.5rem); font-size: 0.875rem; }
+.brand { display: flex; align-items: center; gap: 0.5rem; font-weight: 600; letter-spacing: -0.01em; text-decoration: none; }
+.brand i { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--neon); box-shadow: 0 0 0 1px var(--ink); filter: var(--glow); }
+.download { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.55rem 0.95rem; background: var(--neon); color: #0b0b0b; font-weight: 600; text-decoration: none; border-radius: 999px; box-shadow: inset 0 0 0 1px rgba(11, 11, 11, 0.85); white-space: nowrap; filter: var(--glow); }
+.download:hover { box-shadow: inset 0 0 0 2px #0b0b0b; }
+.download svg { width: 16px; height: 16px; }
 footer.rail { color: var(--muted); font-size: 0.8125rem; }
-.linkish { background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 0.18em; color: inherit; }
+.linkish { background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 0.2em; text-decoration-thickness: 1px; color: inherit; }
 
 /* Centre stage */
-main { display: grid; place-content: center; justify-items: center; gap: clamp(1rem, 3.2vh, 2rem); padding: 0 1rem; text-align: center; min-height: 0; }
-h1 { font-family: var(--display); font-weight: 900; font-size: clamp(2.75rem, min(11vw, 10vh), 6.5rem); line-height: 0.95; margin: 0; letter-spacing: 0.005em; }
-.lede { margin: -0.5rem 0 0; max-width: 30em; color: var(--muted); font-size: clamp(0.9375rem, 2vh, 1.125rem); }
+main { display: grid; place-content: center; justify-items: center; gap: clamp(1rem, 3.4vh, 2.2rem); padding: 0 1rem; text-align: center; min-height: 0; }
+h1 { font-family: var(--display); font-weight: 700; font-size: clamp(2.5rem, min(9vw, 9vh), 5.75rem); line-height: 1; letter-spacing: -0.045em; margin: 0; }
+.lede { margin: -0.4rem 0 0; max-width: 28em; color: var(--muted); font-size: clamp(0.9375rem, 1.9vh, 1.0625rem); }
 
-/* The control: a different physical thing for each cut. data-on="true" is
-   light mode (open, on); "false" is dark mode (closed, off). */
-.stage { --h: clamp(150px, 30vh, 260px); height: var(--h); display: grid; place-items: center; }
-.ctl { height: var(--h); padding: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; border-radius: 12px; }
+/* The control: line drawings, one neon part. data-on="true" is light mode (open, on). */
+.stage { --h: clamp(150px, 30vh, 250px); height: var(--h); display: grid; place-items: center; color: var(--ink); }
+.ctl { height: var(--h); padding: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; border-radius: 12px; color: inherit; }
 .ctl[hidden] { display: none; }
-.ctl svg { display: block; height: 100%; width: auto; overflow: visible; filter: drop-shadow(0 calc(var(--h) * 0.035) calc(var(--h) * 0.05) rgba(12, 27, 46, 0.35)); }
-.ctl:not([hidden]) { animation: arrive 280ms cubic-bezier(0.3, 1.4, 0.5, 1); }
-@keyframes arrive { from { opacity: 0; transform: scale(0.9) translateY(6px); } }
-.spin { transform-box: fill-box; transform-origin: center; } /* shapes centred on 0,0 */
-.fill { transform-box: fill-box; }
+.ctl svg { display: block; height: 100%; width: auto; overflow: visible; }
+.ctl svg * { vector-effect: non-scaling-stroke; }
+.ctl:not([hidden]) { animation: arrive 260ms cubic-bezier(0.2, 0.9, 0.3, 1); }
+@keyframes arrive { from { opacity: 0; transform: translateY(6px); } }
+.ink { stroke: currentColor; stroke-width: 1.75; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.thin { stroke-width: 1; }
+.paper { fill: var(--paper); }
+.solid { fill: currentColor; }
+.neon { fill: var(--neon); filter: var(--glow); transition: opacity 240ms, transform 240ms; }
+.spin { transform-box: fill-box; transform-origin: center; }
+.fillbox { transform-box: fill-box; }
 
-/* Iris: a lens whose aperture closes */
-.iris .light { fill: #fff3d2; transition: fill 300ms; }
+/* Iris: the aperture closes. Blades stay dark in both modes, so shut looks shut. */
+.iris { --blade: #0b0b0b; --blade-line: var(--paper); }
+:root[data-theme="dark"] .iris { --blade: #1e1e1e; --blade-line: #4a4a47; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .iris { --blade: #1e1e1e; --blade-line: #4a4a47; } }
+.iris .neon { filter: none; }
+.iris .blades { fill: var(--blade); }
 .iris .aperture { transition: transform 420ms cubic-bezier(0.6, 0, 0.3, 1); }
-[data-on="false"] .iris .aperture { transform: rotate(70deg) scale(0.05); }
-[data-on="false"] .iris .light { fill: #0c1b2e; }
+[data-on="false"] .iris .aperture { transform: rotate(70deg) scale(0.06); }
 
-/* Wipe: a chunky slide switch, sliding the way the wipe goes */
-.wipe .knob { transition: transform 240ms cubic-bezier(0.3, 1.5, 0.5, 1); transform: translateX(82px); }
+/* Wipe: slide switch */
+.wipe .knob { transition: transform 240ms cubic-bezier(0.3, 1.4, 0.5, 1); transform: translateX(84px); }
 [data-on="false"] .wipe .knob { transform: none; }
-.wipe .on-label { fill: #0c1b2e; } .wipe .off-label { fill: #a29680; }
-[data-on="false"] .wipe .on-label { fill: #a29680; } [data-on="false"] .wipe .off-label { fill: #0c1b2e; }
+.wipe .track-on { transition: opacity 200ms; }
+[data-on="false"] .wipe .track-on { opacity: 0; }
 
-/* Old TV: a 70s knob that clunks between ON and OFF */
+/* Old TV: the knob clunks between ON and OFF */
 .tv .knob { transition: transform 300ms cubic-bezier(0.5, 1.9, 0.5, 1); transform: rotate(45deg); }
 [data-on="false"] .tv .knob { transform: rotate(-45deg); }
-.tv .led { fill: #ff5a3c; filter: drop-shadow(0 0 4px #ff5a3c); transition: fill 200ms, filter 200ms; }
-[data-on="false"] .tv .led { fill: #4a1f19; filter: none; }
+[data-on="false"] .tv .neon { opacity: 0; }
 
-/* Blinds: the slats tilt shut */
-.blinds .slat { transform-origin: center; transition: transform 320ms cubic-bezier(0.5, 0, 0.3, 1); transform: scaleY(0.28); }
-[data-on="false"] .blinds .slat { transform: scaleY(1.12); }
-.blinds .slat:nth-child(odd) { transition-delay: 20ms; }
+/* Blinds: slats tilt shut */
+.blinds .slat { transform-origin: center; transition: transform 320ms cubic-bezier(0.5, 0, 0.3, 1); transform: scaleY(0.22); }
+[data-on="false"] .blinds .slat { transform: scaleY(1.15); }
 
 /* Curtains: yank the rope, the curtains draw */
-.curtain .left { transform-origin: left; transition: transform 520ms cubic-bezier(0.5, 1.25, 0.5, 1); transform: scaleX(0.3); }
-.curtain .right { transform-origin: right; transition: transform 520ms cubic-bezier(0.5, 1.25, 0.5, 1); transform: scaleX(0.3); }
+.curtain .left, .curtain .right { transition: transform 520ms cubic-bezier(0.5, 1.2, 0.5, 1); transform: scaleX(0.28); }
+.curtain .left { transform-origin: left; } .curtain .right { transform-origin: right; }
 [data-on="false"] .curtain .left, [data-on="false"] .curtain .right { transform: scaleX(1); }
 .curtain .rope.yank { animation: yank 420ms cubic-bezier(0.3, 1.6, 0.5, 1); }
-@keyframes yank { 35% { transform: translateY(18px); } }
+@keyframes yank { 35% { transform: translateY(16px); } }
 
-/* Day and night through the little windows */
-.sky-day, .sun { transition: opacity 300ms; }
-[data-on="false"] .sky-day, [data-on="false"] .sun { opacity: 0; }
-.moon { opacity: 0; transition: opacity 300ms; }
+/* Sun by day, moon by night, in the little windows */
+.sun { transition: opacity 260ms; }
+[data-on="false"] .sun { opacity: 0; }
+.moon { opacity: 0; transition: opacity 260ms; }
 [data-on="false"] .moon { opacity: 1; }
 
 /* How it switches */
-.cuts { border: 0; margin: 0; padding: 0; display: grid; justify-items: center; gap: 0.6rem; }
-.cuts legend { padding: 0; margin-bottom: 0.6rem; font-size: 0.8125rem; color: var(--muted); }
-.chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem; }
+.cuts { border: 0; margin: 0; padding: 0; display: grid; justify-items: center; }
+.cuts legend { padding: 0; margin-bottom: 0.7rem; font-size: 0.75rem; letter-spacing: 0.02em; color: var(--muted); }
+.chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.35rem; }
 .chips label { position: relative; }
 .chips input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
-.chips span { display: block; padding: 0.45rem 0.9rem; border: 1.5px solid var(--line); border-radius: 999px; font-size: 0.875rem; font-weight: 600; transition: background 120ms, border-color 120ms; }
-.chips input:hover + span { border-color: var(--text); }
-.chips input:checked + span { background: var(--text); border-color: var(--text); color: var(--bg); }
-.chips input:focus-visible + span { outline: 3px solid var(--gold); outline-offset: 2px; }
+.chips span { display: block; padding: 0.42rem 0.85rem; border: 1px solid var(--line); border-radius: 999px; font-size: 0.8125rem; font-weight: 500; transition: background 120ms, border-color 120ms, color 120ms; }
+.chips input:hover + span { border-color: var(--ink); }
+.chips input:checked + span { background: var(--ink); border-color: var(--ink); color: var(--paper); }
+.chips input:focus-visible + span { outline: 2px solid var(--ink); outline-offset: 3px; }
 
 /* Install steps */
-dialog { width: min(30rem, calc(100% - 2rem)); padding: 1.75rem; border: 0; border-radius: 14px; background: var(--bg); color: var(--text); box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.6); }
-dialog::backdrop { background: rgba(5, 10, 18, 0.55); }
-dialog h2 { font-family: var(--display); font-weight: 900; font-size: 2.25rem; line-height: 1; margin: 0 0 1rem; }
-dialog ol { margin: 0; padding-left: 1.3rem; }
-dialog li { margin-bottom: 0.75rem; padding-left: 0.3rem; }
-dialog li::marker { font-family: var(--display); font-weight: 900; color: #c8951c; }
+dialog { width: min(30rem, calc(100% - 2rem)); padding: 1.75rem; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); color: var(--ink); box-shadow: 0 30px 80px -24px rgba(0, 0, 0, 0.45); }
+dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
+dialog h2 { font-family: var(--display); font-weight: 700; font-size: 1.75rem; letter-spacing: -0.035em; line-height: 1.1; margin: 0 0 1rem; }
+dialog ol { margin: 0; padding-left: 1.2rem; }
+dialog li { margin-bottom: 0.7rem; padding-left: 0.3rem; }
+dialog li::marker { font-weight: 700; }
 dialog p { color: var(--muted); font-size: 0.9375rem; margin: 1rem 0 0; }
 dialog form { margin-top: 1.25rem; text-align: right; }
-dialog form button { padding: 0.5rem 1rem; border: 1.5px solid var(--text); border-radius: 999px; background: none; cursor: pointer; font-weight: 600; }
-kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; }
+dialog form button { padding: 0.45rem 1rem; border: 1px solid var(--ink); border-radius: 999px; background: none; cursor: pointer; font-weight: 500; }
+kbd { font: 500 0.85em var(--body); padding: 0.05em 0.4em; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; }
 
-/* The effect that masks the page while it switches */
+/* The cut that masks the page, exactly like the app's overlay */
 #mask { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100; }
 
 @media (max-height: 560px) { .lede { display: none; } }
@@ -166,7 +168,7 @@ kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(
 </head>
 <body>
 <header class="rail">
-  <a class="brand" href="/"><img src="icon-64.png" width="28" height="28" alt="">NiteLite</a>
+  <a class="brand" href="/"><i aria-hidden="true"></i>NiteLite</a>
   <a class="download" href="NiteLite.zip" download>
     <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" d="M12 3v12m0 0-5-5m5 5 5-5M4 20h16"/></svg>
     Download for Mac
@@ -178,91 +180,84 @@ kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(
   <p class="lede">NiteLite is a free menu bar app that switches your Mac between Light and Dark Mode, with a film cut in between. Pick one and try it.</p>
 
   <div class="stage" id="stage" data-on="true">
+    <!-- Iris: a lens -->
     <button class="ctl iris" type="button" role="switch" aria-checked="true" data-cut="iris" aria-label="Lens aperture">
       <svg viewBox="-110 -110 220 220" aria-hidden="true">
         <defs>
-          <mask id="m-iris"><circle r="70" fill="#fff"/><polygon class="aperture spin" fill="#000" points="46.0,0.0 23.0,39.8 -23.0,39.8 -46.0,0.0 -23.0,-39.8 23.0,-39.8"/></mask>
-          <clipPath id="c-iris"><circle r="70"/></clipPath>
-          <radialGradient id="g-glass" cx="35%" cy="30%" r="70%"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/></radialGradient>
+          <mask id="m-iris"><circle r="64" fill="#fff"/><polygon class="aperture spin" fill="#000" points="44.0,0.0 22.0,38.1 -22.0,38.1 -44.0,0.0 -22.0,-38.1 22.0,-38.1"/></mask>
+          <clipPath id="c-iris"><circle r="64"/></clipPath>
         </defs>
-        <circle r="106" fill="#1b1f26"/>
-        <circle r="98" fill="none" stroke="#353b45" stroke-width="12" stroke-dasharray="1.6 3.4"/>
-        <circle r="86" fill="#0f1217"/>
-        <circle r="78" fill="none" stroke="#5c6470" stroke-width="3" stroke-dasharray="1 9.2"/>
-        <circle class="light" r="70"/>
+        <circle class="ink" r="104"/>
+        <circle class="ink thin" r="94" stroke-dasharray="1 5"/>
+        <circle class="ink" r="82"/>
+        <circle class="neon" r="64"/>
         <g clip-path="url(#c-iris)">
-          <circle r="70" fill="#0a0c10" mask="url(#m-iris)"/>
-          <g class="aperture spin" stroke="#262b33" stroke-width="1.6"><line x1="46.0" y1="0.0" x2="-141.8" y2="353.2"/><line x1="23.0" y1="39.8" x2="-376.8" y2="53.8"/><line x1="-23.0" y1="39.8" x2="-235.0" y2="-299.4"/><line x1="-46.0" y1="0.0" x2="141.8" y2="-353.2"/><line x1="-23.0" y1="-39.8" x2="376.8" y2="-53.8"/><line x1="23.0" y1="-39.8" x2="235.0" y2="299.4"/></g>
+          <circle class="blades" r="64" mask="url(#m-iris)"/>
+          <g class="aperture spin ink thin" style="stroke: var(--blade-line)"><line x1="44.0" y1="0.0" x2="-141.8" y2="353.2"/><line x1="22.0" y1="38.1" x2="-376.8" y2="53.8"/><line x1="-22.0" y1="38.1" x2="-235.0" y2="-299.4"/><line x1="-44.0" y1="0.0" x2="141.8" y2="-353.2"/><line x1="-22.0" y1="-38.1" x2="376.8" y2="-53.8"/><line x1="22.0" y1="-38.1" x2="235.0" y2="299.4"/></g>
         </g>
-        <circle r="70" fill="url(#g-glass)" stroke="#000" stroke-width="2"/>
+        <circle class="ink" r="64"/>
       </svg>
     </button>
 
+    <!-- Wipe: a slide switch -->
     <button class="ctl wipe" type="button" role="switch" aria-checked="true" data-cut="wipe" aria-label="Slide switch" hidden>
       <svg viewBox="0 0 260 150" aria-hidden="true">
-        <defs><linearGradient id="g-plate" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".5" stop-color="#f7f1e5"/><stop offset="1" stop-color="#ddd2bd"/></linearGradient>
-          <linearGradient id="g-knob" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#d9d0bf"/></linearGradient></defs>
-        <rect x="4" y="4" width="252" height="142" rx="18" fill="url(#g-plate)"/>
-        <circle cx="24" cy="75" r="5" fill="#cbbfa9"/><circle cx="236" cy="75" r="5" fill="#cbbfa9"/>
-        <text class="off-label" x="70" y="34" font-size="13" font-weight="700" text-anchor="middle" font-family="system-ui">OFF</text>
-        <text class="on-label" x="190" y="34" font-size="13" font-weight="700" text-anchor="middle" font-family="system-ui">ON</text>
-        <rect x="45" y="46" width="170" height="60" rx="30" fill="#d3c7b0"/>
-        <rect x="45" y="46" width="170" height="60" rx="30" fill="none" stroke="#a99d88" stroke-width="2"/>
-        <g class="knob"><rect x="50" y="51" width="78" height="50" rx="25" fill="url(#g-knob)" stroke="#bfb39d"/><path d="M80 63v26M89 63v26M98 63v26" stroke="#c5b9a3" stroke-width="3" stroke-linecap="round"/></g>
+        <rect class="ink paper" x="4" y="4" width="252" height="142" rx="16"/>
+        <circle class="ink thin" cx="24" cy="75" r="4"/><circle class="ink thin" cx="236" cy="75" r="4"/>
+        <text x="70" y="32" font-size="11" font-weight="600" letter-spacing="1" text-anchor="middle" fill="currentColor" font-family="-apple-system, system-ui">OFF</text>
+        <text x="190" y="32" font-size="11" font-weight="600" letter-spacing="1" text-anchor="middle" fill="currentColor" font-family="-apple-system, system-ui">ON</text>
+        <rect class="neon track-on" x="45" y="46" width="170" height="60" rx="30"/>
+        <rect class="ink" x="45" y="46" width="170" height="60" rx="30"/>
+        <g class="knob"><rect class="ink paper" x="50" y="51" width="76" height="50" rx="25"/><path class="ink thin" d="M80 64v24M88 64v24M96 64v24"/></g>
       </svg>
     </button>
 
+    <!-- Old TV: a power knob -->
     <button class="ctl tv" type="button" role="switch" aria-checked="true" data-cut="tv" aria-label="TV power knob" hidden>
       <svg viewBox="-130 -130 260 260" aria-hidden="true">
-        <defs><radialGradient id="g-chrome" cx="40%" cy="35%" r="75%"><stop offset="0" stop-color="#f4f4f2"/><stop offset=".6" stop-color="#b9b9b4"/><stop offset="1" stop-color="#7e7e79"/></radialGradient>
-          <radialGradient id="g-top" cx="45%" cy="38%" r="70%"><stop offset="0" stop-color="#45454b"/><stop offset="1" stop-color="#18181b"/></radialGradient></defs>
-        <circle r="122" fill="#3a2a1e"/>
-        <circle r="112" fill="url(#g-chrome)"/>
-        <text x="-74" y="-66" font-size="16" font-weight="800" text-anchor="middle" font-family="system-ui" fill="#2b2b2b">OFF</text>
-        <text x="74" y="-66" font-size="16" font-weight="800" text-anchor="middle" font-family="system-ui" fill="#2b2b2b">ON</text>
-        <path d="M-60 -60 l9 9 M60 -60 l-9 9" stroke="#2b2b2b" stroke-width="4" stroke-linecap="round"/>
-        <circle class="led" cx="0" cy="98" r="6"/>
+        <circle class="ink" r="118"/>
+        <text x="-72" y="-70" font-size="12" font-weight="600" letter-spacing="1" text-anchor="middle" fill="currentColor" font-family="-apple-system, system-ui">OFF</text>
+        <text x="72" y="-70" font-size="12" font-weight="600" letter-spacing="1" text-anchor="middle" fill="currentColor" font-family="-apple-system, system-ui">ON</text>
+        <path class="ink" d="M-62 -62l8 8M62 -62l-8 8"/>
+        <circle class="ink thin" cx="0" cy="100" r="6"/>
+        <circle class="neon" cx="0" cy="100" r="6"/>
         <g class="knob spin">
-          <circle r="84" fill="#141416"/>
-          <circle r="79" fill="none" stroke="#2f2f35" stroke-width="10" stroke-dasharray="4.2 4.1"/>
-          <circle r="66" fill="url(#g-top)"/>
-          <rect x="-5" y="-64" width="10" height="34" rx="5" fill="#f5c342"/>
-          <circle r="12" fill="url(#g-chrome)"/>
+          <circle class="ink paper" r="84"/>
+          <circle class="ink thin" r="76" stroke-dasharray="2 5"/>
+          <circle class="ink" r="62"/>
+          <line class="ink" x1="0" y1="-58" x2="0" y2="-26" style="stroke-width: 5"/>
+          <circle class="ink thin" r="10"/>
         </g>
       </svg>
     </button>
 
+    <!-- Blinds: a window with venetian blinds -->
     <button class="ctl blinds" type="button" role="switch" aria-checked="true" data-cut="blinds" aria-label="Window blinds" hidden>
       <svg viewBox="0 0 200 260" aria-hidden="true">
-        <defs><linearGradient id="g-sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7fb8ea"/><stop offset="1" stop-color="#cfe6f8"/></linearGradient></defs>
-        <rect x="12" y="12" width="176" height="236" rx="8" fill="#efe6d6" stroke="#cdbfa6" stroke-width="2"/>
-        <rect x="24" y="24" width="152" height="212" fill="#0f1f38"/>
-        <rect class="sky-day" x="24" y="24" width="152" height="212" fill="url(#g-sky)"/>
-        <circle class="sun" cx="140" cy="70" r="16" fill="#ffe08a"/>
-        <circle class="moon" cx="140" cy="70" r="12" fill="#f3ead2"/>
-        <g fill="#f8f3ea" stroke="#d2c6b0" stroke-width="0.8"><rect class="slat fill" x="26" y="38" width="148" height="17"/><rect class="slat fill" x="26" y="56.6" width="148" height="17"/><rect class="slat fill" x="26" y="75.2" width="148" height="17"/><rect class="slat fill" x="26" y="93.8" width="148" height="17"/><rect class="slat fill" x="26" y="112.4" width="148" height="17"/><rect class="slat fill" x="26" y="131" width="148" height="17"/><rect class="slat fill" x="26" y="149.6" width="148" height="17"/><rect class="slat fill" x="26" y="168.2" width="148" height="17"/><rect class="slat fill" x="26" y="186.8" width="148" height="17"/><rect class="slat fill" x="26" y="205.4" width="148" height="17"/><rect class="slat fill" x="26" y="219" width="148" height="17"/></g>
-        <rect x="18" y="22" width="164" height="14" rx="3" fill="#f6f1e7" stroke="#cdbfa6"/>
-        <path d="M166 36v160" stroke="#d9cdb6" stroke-width="3" stroke-linecap="round"/>
-        <rect x="161" y="194" width="10" height="26" rx="5" fill="#efe6d6" stroke="#cdbfa6"/>
+        <rect class="ink paper" x="14" y="14" width="172" height="232" rx="4"/>
+        <rect class="ink thin" x="24" y="24" width="152" height="212"/>
+        <circle class="neon sun" cx="134" cy="76" r="20"/>
+        <path class="ink thin moon" d="M140 60a17 17 0 1 0 12 28a14 14 0 1 1 -12 -28z"/>
+        <g class="ink thin paper"><rect class="slat fillbox" x="26" y="38" width="148" height="17"/><rect class="slat fillbox" x="26" y="56.6" width="148" height="17"/><rect class="slat fillbox" x="26" y="75.2" width="148" height="17"/><rect class="slat fillbox" x="26" y="93.8" width="148" height="17"/><rect class="slat fillbox" x="26" y="112.4" width="148" height="17"/><rect class="slat fillbox" x="26" y="131" width="148" height="17"/><rect class="slat fillbox" x="26" y="149.6" width="148" height="17"/><rect class="slat fillbox" x="26" y="168.2" width="148" height="17"/><rect class="slat fillbox" x="26" y="186.8" width="148" height="17"/><rect class="slat fillbox" x="26" y="205.4" width="148" height="17"/><rect class="slat fillbox" x="26" y="219" width="148" height="17"/></g>
+        <rect class="ink paper" x="18" y="22" width="164" height="12" rx="2"/>
+        <path class="ink thin" d="M166 34v162"/>
+        <rect class="ink paper" x="161" y="194" width="10" height="26" rx="5"/>
       </svg>
     </button>
 
+    <!-- Curtains: a window and a rope -->
     <button class="ctl curtain" type="button" role="switch" aria-checked="true" data-cut="curtain" aria-label="Curtain rope" hidden>
       <svg viewBox="0 0 220 260" aria-hidden="true">
-        <defs><linearGradient id="g-sky2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7fb8ea"/><stop offset="1" stop-color="#cfe6f8"/></linearGradient>
-          <pattern id="p-folds" width="12" height="10" patternUnits="userSpaceOnUse"><rect width="12" height="10" fill="#22386b"/><rect x="7" width="5" height="10" fill="#172a55"/><rect x="2" width="2" height="10" fill="#2c4682"/></pattern>
-          <radialGradient id="g-tassel" cx="40%" cy="35%" r="70%"><stop offset="0" stop-color="#ffe39a"/><stop offset="1" stop-color="#b88324"/></radialGradient></defs>
-        <rect x="40" y="36" width="140" height="196" fill="#0f1f38"/>
-        <rect class="sky-day" x="40" y="36" width="140" height="196" fill="url(#g-sky2)"/>
-        <circle class="sun" cx="140" cy="84" r="16" fill="#ffe08a"/>
-        <circle class="moon" cx="140" cy="84" r="12" fill="#f3ead2"/>
-        <rect x="40" y="36" width="140" height="196" fill="none" stroke="#efe6d6" stroke-width="8"/>
-        <path d="M110 36v196M40 134h140" stroke="#efe6d6" stroke-width="6"/>
-        <rect class="left fill" x="16" y="26" width="96" height="220" fill="url(#p-folds)"/>
-        <rect class="right fill" x="108" y="26" width="96" height="220" fill="url(#p-folds)"/>
-        <rect x="10" y="20" width="200" height="7" rx="3.5" fill="#c99a3a"/>
-        <circle cx="10" cy="23.5" r="7" fill="#c99a3a"/><circle cx="210" cy="23.5" r="7" fill="#c99a3a"/>
-        <g class="rope"><path d="M204 28v168" stroke="#e7c46b" stroke-width="3"/><path d="M204 194c-9 0-12 9-12 17 0 10 6 19 12 19s12-9 12-19c0-8-3-17-12-17z" fill="url(#g-tassel)"/></g>
+        <defs><pattern id="p-folds" width="12" height="10" patternUnits="userSpaceOnUse"><rect width="12" height="10" style="fill: var(--paper)"/><path d="M6 0v10" stroke="currentColor" stroke-width="1"/></pattern></defs>
+        <rect class="ink" x="42" y="38" width="136" height="192"/>
+        <circle class="neon sun" cx="140" cy="86" r="18"/>
+        <path class="ink thin moon" d="M146 70a16 16 0 1 0 11 26a13 13 0 1 1 -11 -26z"/>
+        <path class="ink thin" d="M110 38v192M42 134h136"/>
+        <rect class="left fillbox" x="16" y="26" width="96" height="220" fill="url(#p-folds)" stroke="currentColor" stroke-width="1.75"/>
+        <rect class="right fillbox" x="108" y="26" width="96" height="220" fill="url(#p-folds)" stroke="currentColor" stroke-width="1.75"/>
+        <path class="ink" d="M8 22h204"/>
+        <circle class="ink paper" cx="8" cy="22" r="5"/><circle class="ink paper" cx="212" cy="22" r="5"/>
+        <g class="rope"><path class="ink thin" d="M204 24v170"/><path class="neon" d="M204 192c-8 0-11 8-11 16 0 9 5 18 11 18s11-9 11-18c0-8-3-16-11-16z"/><path class="ink thin" d="M204 192c-8 0-11 8-11 16 0 9 5 18 11 18s11-9 11-18c0-8-3-16-11-16z"/></g>
       </svg>
     </button>
   </div>
@@ -316,7 +311,7 @@ kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(
   const store = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
   const recall = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 
-  // data-on="true" is light mode: the lens open, the TV on, blinds and curtains open
+  // data-on="true" is light mode: lens open, TV on, blinds and curtains open
   function setOn(on) {
     stage.dataset.on = String(on);
     controls.forEach((c) => c.setAttribute("aria-checked", String(on)));
@@ -329,17 +324,13 @@ kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(
   sync();
   systemDark.addEventListener("change", sync);
 
-  // Remember the chosen cut
   const saved = recall("nitelite-cut");
   if (saved) {
     const input = document.querySelector(`input[name="cut"][value="${saved}"]`);
     if (input) input.checked = true;
   }
   const cut = () => document.querySelector('input[name="cut"]:checked').value;
-  // Show the control that belongs to the chosen cut
-  function showControl() {
-    controls.forEach((c) => { c.hidden = c.dataset.cut !== cut(); });
-  }
+  function showControl() { controls.forEach((c) => { c.hidden = c.dataset.cut !== cut(); }); }
   showControl();
   document.querySelectorAll('input[name="cut"]').forEach((i) => i.addEventListener("change", () => {
     store("nitelite-cut", i.value);
@@ -354,8 +345,9 @@ kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(
     status.textContent = next === "dark" ? "Dark Mode" : "Light Mode";
   }
 
-  // ---- The cuts, drawn over the whole page. Timings follow the app's.
-  // SwiftUI's .easeIn / .easeOut (cubic-bezier .42,0,1,1 and 0,0,.58,1)
+  // ---- The cuts: 1:1 ports of NiteLite/OverlayAnimationWindow.swift.
+  // Same shapes, durations and curves; the overlay is pure black like the app's.
+  // SwiftUI .easeIn / .easeOut are cubic-bezier(.42,0,1,1) and (0,0,.58,1).
   function bezier(x1, y1, x2, y2) {
     const A = (a, b) => 1 - 3 * b + 3 * a, B = (a, b) => 3 * b - 6 * a, C = (a) => 3 * a;
     const at = (t, a, b) => ((A(a, b) * t + B(a, b)) * t + C(a)) * t;
@@ -370,7 +362,7 @@ kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(
   const easeIn = bezier(0.42, 0, 1, 1), easeOut = bezier(0, 0, 0.58, 1);
   const clamp01 = (v) => Math.max(0, Math.min(1, v));
   const seg = (t, start, dur) => clamp01((t - start) / dur);
-  // Damped spring step response, like SwiftUI's .spring(response:dampingFraction:)
+  // SwiftUI .spring(response:dampingFraction:) step response
   function spring(t, response, damping) {
     const wn = (2 * Math.PI) / response, wd = wn * Math.sqrt(1 - damping * damping);
     return 1 - Math.exp(-damping * wn * t) * (Math.cos(wd * t) + ((damping * wn) / wd) * Math.sin(wd * t));
@@ -383,6 +375,7 @@ kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(
     c.beginPath(); c.arc(w / 2, h / 2, r, 0, Math.PI * 2); c.fill();
     c.globalCompositeOperation = "source-over";
   }
+  // CurtainShape: half-screen-plus-20 panel, 8 waves of amplitude 15 on the leading edge
   function drawCurtain(c, w, h, p, wave, left) {
     const cw = w / 2 + 20, waves = 8, amp = 15, step = h / waves;
     const lead = left ? -cw + (cw + w / 2) * p : w + cw - (cw + w / 2) * p;
@@ -395,25 +388,42 @@ kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(
     c.lineTo(trail, h); c.closePath();
     c.fillStyle = "#000"; c.fill();
   }
+  // The old TV's dot: an 8×4 white ellipse with a 3pt blur
+  function crtDot(c, w, h, alpha) {
+    if (alpha <= 0) return;
+    c.save();
+    c.translate(w / 2, h / 2);
+    c.scale(1, 0.5);
+    const g = c.createRadialGradient(0, 0, 0, 0, 0, 7);
+    g.addColorStop(0, `rgba(255,255,255,${alpha})`);
+    g.addColorStop(0.55, `rgba(255,255,255,${alpha * 0.6})`);
+    g.addColorStop(1, "rgba(255,255,255,0)");
+    c.fillStyle = g;
+    c.fillRect(-8, -8, 16, 16);
+    c.restore();
+  }
 
-  // cover: seconds to full black; reveal: seconds back; draw(phase, t)
+  // cover: seconds until black (the app toggles at cover + frameBuffer); reveal: seconds back
   const CUTS = {
     iris: {
-      cover: 0.18, reveal: 0.2,
+      cover: (toDark) => (toDark ? 0.18 : 0.12), reveal: (toDark) => (toDark ? 0.12 : 0.2),
       draw(c, w, h, phase, t, toDark) {
         const maxR = Math.hypot(w, h) / 2;
         if (toDark) {
+          // Iris closes, then the black fades away
           if (phase === "cover") holeBlack(c, w, h, (1 - easeIn(seg(t, 0, 0.18))) * maxR);
           else { c.globalAlpha = 1 - easeOut(seg(t, 0, 0.12)); black(c, w, h); }
         } else {
+          // Fade to black, then the iris opens
           if (phase === "cover") { c.globalAlpha = easeIn(seg(t, 0, 0.12)); black(c, w, h); }
           else holeBlack(c, w, h, easeOut(seg(t, 0, 0.2)) * maxR);
         }
       },
     },
     wipe: {
-      cover: 0.2, reveal: 0.25,
+      cover: () => 0.2, reveal: () => 0.25,
       draw(c, w, h, phase, t) {
+        // Band position: 0 off-screen left, 0.5 covering, 1 off-screen right
         const p = phase === "cover" ? easeIn(seg(t, 0, 0.2)) * 0.5 : 0.5 + easeOut(seg(t, 0, 0.25)) * 0.5;
         const feather = w * 0.1, band = w + feather * 2, x = -band + (w + band) * p;
         const g = c.createLinearGradient(x, 0, x + band, 0);
@@ -423,31 +433,27 @@ kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(
       },
     },
     tv: {
-      cover: 0.23, reveal: 0.19,
+      cover: () => 0.23, reveal: () => 0.19,
       draw(c, w, h, phase, t) {
         let sx, sy, dot;
         if (phase === "cover") {
-          sy = 1 - easeIn(seg(t, 0, 0.1)) * 0.995;
-          sx = 1 - easeIn(seg(t, 0.1, 0.08));
+          sy = 1 - easeIn(seg(t, 0, 0.1)) * 0.995;              // squeeze to a line (0.1s)
+          sx = 1 - easeIn(seg(t, 0.1, 0.08));                    // then to a dot (0.08s)
           dot = t < 0.18 ? easeIn(seg(t, 0.1, 0.04)) : 1 - easeOut(seg(t, 0.18, 0.05));
         } else {
           dot = t < 0.03 ? 0.8 * easeOut(seg(t, 0, 0.03)) : 0.8 * (1 - easeOut(seg(t, 0.03, 0.06)));
-          sx = easeOut(seg(t, 0.03, 0.06));
-          sy = 0.005 + easeOut(seg(t, 0.09, 0.1)) * 0.995;
+          sx = easeOut(seg(t, 0.03, 0.06));                      // dot to line (0.06s)
+          sy = 0.005 + easeOut(seg(t, 0.09, 0.1)) * 0.995;       // line to full (0.1s)
         }
         black(c, w, h);
         c.globalCompositeOperation = "destination-out";
         c.fillRect((w - w * sx) / 2, (h - h * sy) / 2, w * sx, h * sy);
         c.globalCompositeOperation = "source-over";
-        if (dot > 0) {
-          const g = c.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, 10);
-          g.addColorStop(0, `rgba(255,255,255,${dot})`); g.addColorStop(1, "rgba(255,255,255,0)");
-          c.fillStyle = g; c.fillRect(w / 2 - 12, h / 2 - 8, 24, 16);
-        }
+        crtDot(c, w, h, dot);
       },
     },
     blinds: {
-      cover: 0.25, reveal: 0.28,
+      cover: () => 0.25, reveal: () => 0.28,
       draw(c, w, h, phase, t) {
         const p = phase === "cover" ? easeIn(seg(t, 0, 0.25)) : 1 - easeOut(seg(t, 0, 0.28));
         const count = 14, stagger = 0.02, travel = 1 - stagger * (count - 1), sh = h / count;
@@ -459,7 +465,7 @@ kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(
       },
     },
     curtain: {
-      cover: 0.42, reveal: 0.6,
+      cover: () => 0.42, reveal: () => 0.6,
       draw(c, w, h, phase, t) {
         let p, wave;
         if (phase === "cover") { p = spring(t, 0.7, 0.75); wave = easeOut(clamp01(t / 0.8)) * Math.PI * 2; }
@@ -469,7 +475,10 @@ kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(
       },
     },
   };
-  const HOLD = 0.12; // a beat on black
+  // On black, the app waits frameBuffer (30ms), runs the AppleScript (~120ms typical),
+  // then holds repaintSettle (400ms) while other apps redraw. Same beat here.
+  const FRAME_BUFFER = 0.03;
+  const HOLD = FRAME_BUFFER + 0.12 + 0.4;
 
   function fit() {
     const dpr = Math.min(devicePixelRatio || 1, 2);
@@ -481,14 +490,17 @@ kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(
   function toggle() {
     if (busy) return;
     if (reduceMotion.matches) { flip(); return; }
-    const c = CUTS[cut()];
+    const name = cut(), c = CUTS[name];
     busy = true;
     fit();
     const toDark = !isDark();
+    const cover = c.cover(toDark), reveal = c.reveal(toDark);
     // The control moves the instant you use it, like the real thing
     setOn(!toDark);
-    const rope = stage.querySelector(".curtain .rope");
-    if (cut() === "curtain") { rope.classList.remove("yank"); void rope.getBBox(); rope.classList.add("yank"); }
+    if (name === "curtain") {
+      const rope = stage.querySelector(".curtain .rope");
+      rope.classList.remove("yank"); void rope.getBBox(); rope.classList.add("yank");
+    }
     const w = innerWidth, h = innerHeight;
     let flipped = false;
     const start = performance.now();
@@ -496,13 +508,13 @@ kbd { font: 600 0.85em var(--body); padding: 0.1em 0.4em; border: 1px solid var(
       const t = (now - start) / 1000;
       ctx.save();
       ctx.clearRect(0, 0, w, h);
-      if (t < c.cover + HOLD) {
-        c.draw(ctx, w, h, "cover", Math.min(t, c.cover + HOLD), toDark);
-        if (!flipped && t >= c.cover) { flipped = true; flip(); }
+      if (t < cover + HOLD) {
+        c.draw(ctx, w, h, "cover", t, toDark);
+        if (!flipped && t >= cover + FRAME_BUFFER) { flipped = true; flip(); }
         ctx.restore();
         requestAnimationFrame(frame);
-      } else if (t < c.cover + HOLD + c.reveal) {
-        c.draw(ctx, w, h, "reveal", t - c.cover - HOLD, toDark);
+      } else if (t < cover + HOLD + reveal) {
+        c.draw(ctx, w, h, "reveal", t - cover - HOLD, toDark);
         ctx.restore();
         requestAnimationFrame(frame);
       } else {
