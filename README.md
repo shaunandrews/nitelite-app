@@ -1,6 +1,8 @@
 # NiteLite
 Tagline: Let there be night.
 
+[Website](https://nitelite.space.fast) · [Download](https://nitelite.space.fast/NiteLite.zip) · GPL-3.0
+
 NiteLite is a lightweight, elegant macOS menubar app that does exactly one thing perfectly: toggles system Dark Mode with a single click.
 
 It lives in your menu bar with a subtle icon indicating your current mode, making it frictionless to switch between Light and Dark.
@@ -131,3 +133,8 @@ NiteLite/
 docs/                            # Architecture notes
 marketing/                       # Original placeholder demo page
 ```
+
+## License
+NiteLite is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License, version 3 or (at your option) any later version. See [LICENSE](LICENSE).
+
+Copyright © 2026 Shaun Andrews.
