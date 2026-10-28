@@ -80,6 +80,9 @@ body {
 a { color: inherit; text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
 button { font: inherit; color: inherit; }
 :focus-visible { outline: 2px solid var(--ink); outline-offset: 4px; border-radius: 4px; }
+/* No orphaned last words: pretty wrapping where supported, plus &nbsp; between the last two words of each sentence as a fallback */
+p, li { text-wrap: pretty; }
+h1, h2 { text-wrap: balance; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* Top and bottom rails */
@@ -217,7 +220,7 @@ kbd { font: 500 0.85em var(--body); padding: 0.05em 0.4em; border: 1px solid var
 
 <main>
   <h1 id="headline">Let there be night.</h1>
-  <p class="lede">NiteLite is a free menu bar app that switches your Mac between Light and Dark Mode, with a film cut in between.</p>
+  <p class="lede">NiteLite is a free menu bar app that switches your Mac between Light and Dark Mode, with a film cut in&nbsp;between.</p>
 
   <div class="stage" id="stage" data-on="true">
     <!-- Iris: a lens -->
@@ -314,9 +317,9 @@ kbd { font: 500 0.85em var(--body); padding: 0.05em 0.4em; border: 1px solid var
   </fieldset>
 
   <ul class="benefits">
-    <li><h2>One click, or ⌘⇧D</h2><p>Switch modes from the menu bar, or with the shortcut from any app.</p></li>
-    <li><h2>Built for checking your work</h2><p>See your site or app in Light and Dark Mode in a second, without opening System Settings.</p></li>
-    <li><h2>A cut, not a flicker</h2><p>The screen goes black while every app redraws, so you never see the messy flash in between.</p></li>
+    <li><h2>One click, or ⌘⇧D</h2><p>Switch modes from the menu bar, or with the shortcut from any&nbsp;app.</p></li>
+    <li><h2>Built for checking your work</h2><p>See your site or app in Light and Dark Mode in a second, without opening System&nbsp;Settings.</p></li>
+    <li><h2>A cut, not a flicker</h2><p>The screen goes black while every app redraws, so you never see the messy flash in&nbsp;between.</p></li>
   </ul>
 </main>
 
