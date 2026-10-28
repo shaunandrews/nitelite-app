@@ -105,13 +105,6 @@ main { display: grid; place-content: center; justify-items: center; gap: clamp(1
 h1 { font-family: var(--display); font-weight: 700; font-size: clamp(2.5rem, min(9vw, 9vh), 5.75rem); line-height: 1; letter-spacing: -0.045em; margin: 0; }
 .lede { margin: -0.4rem 0 0; max-width: 28em; color: var(--muted); font-size: clamp(0.9375rem, 1.9vh, 1.0625rem); }
 
-/* What it does, in three lines */
-.facts { list-style: none; margin: -0.6rem 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem 1.6rem; font-size: 0.875rem; color: var(--ink); }
-.facts li { display: flex; align-items: center; gap: 0.45rem; }
-.facts svg { width: 18px; height: 18px; flex: none; }
-.facts kbd { margin: 0 0.1rem; }
-@media (max-width: 40rem) { .facts { flex-direction: column; align-items: center; gap: 0.3rem; } }
-
 /* The control: line drawings, one neon part. data-on="true" is light mode (open, on). */
 .stage { --h: clamp(150px, 30vh, 250px); height: var(--h); display: grid; place-items: center; color: var(--ink); }
 .ctl { height: var(--h); padding: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; border-radius: 12px; color: inherit; }
@@ -176,6 +169,12 @@ h1 { font-family: var(--display); font-weight: 700; font-size: clamp(2.5rem, min
 .chips input:checked + span { background: var(--ink); border-color: var(--ink); color: var(--paper); }
 .chips input:focus-visible + span { outline: 2px solid var(--ink); outline-offset: 3px; }
 
+/* Why it's useful */
+.benefits { list-style: none; margin: 0.4rem 0 0; padding: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 1.25rem 2.5rem; max-width: 60rem; text-align: left; }
+.benefits li { flex: 1 1 15rem; max-width: 18rem; padding-top: 0.75rem; border-top: 1px solid var(--line); }
+.benefits h2 { margin: 0; font-size: 0.9375rem; font-weight: 600; letter-spacing: -0.01em; }
+.benefits p { margin: 0.25rem 0 0; font-size: 0.875rem; line-height: 1.45; color: var(--muted); }
+
 /* Install steps */
 dialog { width: min(30rem, calc(100% - 2rem)); padding: 1.75rem; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); color: var(--ink); box-shadow: 0 30px 80px -24px rgba(0, 0, 0, 0.45); }
 dialog::backdrop { background: rgba(0, 0, 0, 0.5); }
@@ -192,12 +191,15 @@ kbd { font: 500 0.85em var(--body); padding: 0.05em 0.4em; border: 1px solid var
 #mask { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 100; }
 
 @media (max-height: 560px) { .lede { display: none; } }
-@media (max-height: 640px) { .facts { display: none; } }
-/* Short phones: the facts say what the description says, so drop it and shrink the control */
-@media (max-width: 40rem) and (max-height: 760px) {
-  .lede { display: none; }
-  .stage { --h: clamp(130px, 27vh, 250px); }
+/* Small screens: keep only the benefit headlines, then drop them on very short ones */
+@media (max-height: 760px), (max-width: 48rem) and (max-height: 900px) {
+  .benefits { gap: 0.25rem 1.25rem; text-align: center; }
+  .benefits p { display: none; }
+  .benefits h2 { font-size: 0.875rem; font-weight: 500; color: var(--muted); }
+  .benefits li { flex: 0 0 auto; max-width: none; border: 0; padding: 0; }
 }
+@media (max-width: 40rem) and (max-height: 760px) { .stage { --h: clamp(130px, 26vh, 250px); } .lede { display: none; } }
+@media (max-height: 600px) { .benefits { display: none; } }
 </style>
 </head>
 <body>
@@ -216,20 +218,6 @@ kbd { font: 500 0.85em var(--body); padding: 0.05em 0.4em; border: 1px solid var
 <main>
   <h1 id="headline">Let there be night.</h1>
   <p class="lede">NiteLite is a free menu bar app that switches your Mac between Light and Dark Mode, with a film cut in between.</p>
-  <ul class="facts">
-    <li>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="4" width="19" height="16" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M2.5 8.5h19" stroke="currentColor" stroke-width="1.6"/><circle cx="17.5" cy="6.25" r="1.1" fill="var(--neon)" stroke="currentColor" stroke-width="0.8"/></svg>
-      Click it in your menu bar
-    </li>
-    <li>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6.5 10h1M10 10h1M13.5 10h1M17 10h.5M7.5 14h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
-      Or press <kbd>⌘</kbd><kbd>⇧</kbd><kbd>D</kbd> from any app
-    </li>
-    <li>
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 7 3.5 12l5 5M15.5 7l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      Made for testing sites and apps in both modes
-    </li>
-  </ul>
 
   <div class="stage" id="stage" data-on="true">
     <!-- Iris: a lens -->
@@ -324,6 +312,12 @@ kbd { font: 500 0.85em var(--body); padding: 0.05em 0.4em; border: 1px solid var
       <label><input type="radio" name="cut" value="curtain"><span>Curtains</span></label>
     </div>
   </fieldset>
+
+  <ul class="benefits">
+    <li><h2>One click, or ⌘⇧D</h2><p>Switch modes from the menu bar, or with the shortcut from any app.</p></li>
+    <li><h2>Built for checking your work</h2><p>See your site or app in Light and Dark Mode in a second, without opening System Settings.</p></li>
+    <li><h2>A cut, not a flicker</h2><p>The screen goes black while every app redraws, so you never see the messy flash in between.</p></li>
+  </ul>
 </main>
 
 <footer class="rail">
