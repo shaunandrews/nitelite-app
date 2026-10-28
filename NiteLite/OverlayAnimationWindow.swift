@@ -497,12 +497,16 @@ struct OverlayAnimationView: View {
 
     // MARK: - Curtain Animation
     // Drawn every frame from CurtainCall's spring math (not SwiftUI animations),
-    // so the website can reproduce it exactly. A plain 120 Hz timer drives the
-    // redraws; it's dependable in this borderless overlay window.
+    // so the website can reproduce it exactly. A 120 Hz timer updates curtainNow.
+    // Read the state here in the body, not inside the Canvas closure: SwiftUI only
+    // tracks reads made during body evaluation, so reading it in the closure means
+    // the Canvas never redraws (it stays blank).
     private var curtainAnimationView: some View {
-        Canvas { context, size in
-            guard let start = curtainStart else { return }
-            CurtainCall.draw(context, size: size, t: curtainNow.timeIntervalSince(start), revealStart: curtainRevealAt)
+        let t = curtainStart.map { curtainNow.timeIntervalSince($0) }
+        let reveal = curtainRevealAt
+        return Canvas { context, size in
+            guard let t else { return }
+            CurtainCall.draw(context, size: size, t: t, revealStart: reveal)
         }
         .frame(width: screenSize.width, height: screenSize.height)
         .onReceive(frameTimer) { curtainNow = $0 }
