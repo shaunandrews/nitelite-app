@@ -69,19 +69,15 @@ sf publish site       # publishes a new version to the same space
 ### SEO files
 `robots.txt`, `sitemap.xml`, `404.html`, and the canonical/Open Graph URLs in `index.html` all point at `https://nitelite.space.fast/`. Update them together if the domain changes.
 
-## App icon
+## App icon and share image
 
-The icon is a gold film iris around a crescent moon on navy. It was generated with ChatGPT as full-bleed 1024px square artwork; macOS applies the rounded-square mask itself, so don't add corners or padding. The sizes live in `NiteLite/Assets.xcassets/AppIcon.appiconset/`. To replace the artwork, regenerate them from a new square PNG:
+The app icon is a camera lens drawn in white lines on black, with a neon aperture, matching the website. Sources live in `design/`: `icon.svg` (full-bleed 1024px square; macOS applies the rounded-square mask, so don't add corners) and `og.html` (the 1200×630 share card). Regenerate everything with:
 
 ```bash
-cd NiteLite/Assets.xcassets/AppIcon.appiconset
-for s in 16 32 128 256 512; do
-  sips -s format png -z $s $s source.png --out icon_${s}x${s}.png
-  sips -s format png -z $((s*2)) $((s*2)) source.png --out icon_${s}x${s}@2x.png
-done
+design/render.sh   # app icon sizes, site/og.png, site/icon-512.png (headless Chrome + sips)
 ```
 
-The website icons (`site/icon-64.png`, `site/icon-512.png`) are the masked version macOS renders, exported from the built app.
+Then rebuild the app (`./build.sh install`) and repackage the download (`./build.sh package`) so the new icon ships.
 
 ## Permissions
 On first run, macOS asks for permission to control System Events. This is required for NiteLite to toggle Dark Mode.
